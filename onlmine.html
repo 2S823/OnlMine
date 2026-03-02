@@ -267,7 +267,7 @@ function startGame() {
     if(isHost) { generateWorld(); worldLoaded = true; }
 }
 
-function generateWorld(){ for(let x=-RENDER*CHUNK; x<=RENDER*CHUNK; x++){ for(let z=-RENDER*CHUNK; z<=RENDER*CHUNK; z++){ [{y:-1,type:"grass"},{y:-2,type:"dirt"},{y:-3,type:"stone"},{y:-4,type:"stone"},{y:-5,type:"bedrock"}].forEach(l=>addBlock(x,l.y,z,l.type,false)); } } }
+function generateWorld(){ for(let x=-RENDER*CHUNK; x<=RENDER*CHUNK; x++){ for(let z=-RENDER*CHUNK; z<=RENDER*CHUNK; z++){ [{y:-1,type:"grass"},{y:-2,type:"dirt"},{y:-3,type:"stone"},{y:-4,type:"stone"},{y:-5,type:"stone"},{y:-6,type:"bedrock"}].forEach(l=>addBlock(x,l.y,z,l.type,false)); } } }
 
 function createOtherPlayer(peerId, name, shirtColor){
     if(playerMeshes[peerId]) return;
