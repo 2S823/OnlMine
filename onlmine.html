@@ -7,6 +7,7 @@
 body{margin:0;overflow:hidden;background:#87ceeb;font-family:sans-serif;}
 #crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);color:white;font-size:24px;pointer-events:none;z-index:10;display:none;}
 #msg{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#0008;color:white;padding:8px 16px;border-radius:6px;z-index:10;display:none;}
+#loadingUI{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:none;justify-content:center;align-items:center;z-index:300;color:white;flex-direction:column;}
 #progressBarContainer{position:fixed;bottom:160px;left:50%;transform:translateX(-50%);width:200px;height:6px;background:#0008;display:none;z-index:10;border:1px solid #fff4;}
 #progressBar{width:0%;height:100%;background:#ffcc00;}
 #netUI{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:200;color:white;}
@@ -38,6 +39,11 @@ input{font-size:18px;padding:12px;width:85%;margin:10px 0;border-radius:5px;bord
 </head>
 <body>
 
+<div id="loadingUI">
+    <div style="font-size:24px;margin-bottom:10px;">ワールドを読み込み中...</div>
+    <div id="loadProgressText">0%</div>
+</div>
+
 <div id="netUI">
   <div id="menuContent">
     <h1>マイクラ</h1>
@@ -63,7 +69,7 @@ input{font-size:18px;padding:12px;width:85%;margin:10px 0;border-radius:5px;bord
             </div>
             <div class="settings-row">
                 <label>マップの広さ: <span id="chunkSizeDisplay">3</span></label>
-                <input type="range" id="chunkSizeInput" min="3" max="10" value="3" oninput="document.getElementById('chunkSizeDisplay').innerText=this.value">
+                <input type="range" id="chunkSizeInput" min="3" max="8" value="3" oninput="document.getElementById('chunkSizeDisplay').innerText=this.value">
             </div>
         </div>
         <button class="large-btn" onclick="startHost()">ワールド作成</button>
@@ -104,7 +110,7 @@ input{font-size:18px;padding:12px;width:85%;margin:10px 0;border-radius:5px;bord
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
 // ===== 定数と変数 =====
-let CHUNK=3; // ホスト設定により変動
+let CHUNK=3; 
 const RENDER=2;
 const PLAYER_H=1.6, GRAVITY=-15, JUMP=6, MOVE_SPEED=5;
 const REACH=5, blockHardness={ grass: 1.0, dirt: 1.0, stone: 3.0, bedrock: Infinity };
@@ -121,7 +127,6 @@ let damagedFlag = false;
 
 const inventory = [{ type: "grass", count: 0 }, { type: "dirt", count: 0 }, { type: "stone", count: 0 }, { type: "pickaxe", count: Infinity }, { type: "shovel", count: Infinity }];
 
-// UI操作
 function setMySkin(color, el) { mySkinColor = color; document.querySelectorAll('.skin-btn').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
 function showHostSettings() { document.getElementById("mainUI").style.display="none"; document.getElementById("hostSettingsUI").style.display="block"; }
 function showJoin() { document.getElementById("mainUI").style.display="none"; document.getElementById("joinUI").style.display="block"; }
@@ -161,13 +166,8 @@ const mats = {
 
 const selectionGroup = new THREE.Group();
 const selectionGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.001, 1.001, 1.001));
-const selectionMat = new THREE.LineBasicMaterial({ color: 0x000000, polygonOffset: true, polygonOffsetFactor: -5 });
-for(let i=0; i<5; i++){
-    const line = new THREE.LineSegments(selectionGeo, selectionMat);
-    const offset = [[0,0,0],[0.002,0,0],[-0.002,0,0],[0,0.002,0],[0,-0.002,0]][i];
-    line.position.set(offset[0], offset[1], offset[2]);
-    selectionGroup.add(line);
-}
+const selectionMat = new THREE.LineBasicMaterial({ color: 0x000000 });
+selectionGroup.add(new THREE.LineSegments(selectionGeo, selectionMat));
 scene.add(selectionGroup);
 
 const handGroup = new THREE.Group();
@@ -230,7 +230,6 @@ function startHost(){
     if(peer) peer.destroy();
     peer = new Peer(id4);
     peer.on("open", id => { isHost = true; myId = id; document.getElementById("myId").textContent = id; startGame(); });
-    peer.on("error", err => { if(err.type === 'id-taken') startHost(); else { alert("通信エラー: " + err.type); location.reload(); } });
     peer.on("connection", conn => {
         conn.on("open", () => {
             connections[conn.peer] = conn;
@@ -247,24 +246,39 @@ function joinHost(){
     if(id.length !== 4) return alert("4桁のIDを入力してください");
     myName = document.getElementById("userNameInput").value.trim() || "Player";
     document.getElementById("myId").textContent = id;
+    document.getElementById("loadingUI").style.display = "flex"; // 読み込み開始表示
     if(peer) peer.destroy();
     peer = new Peer();
     peer.on("open", selfId => {
         myId = selfId;
         const conn = peer.connect(id, {reliable:true});
-        conn.on("open", () => { connections[id] = conn; startGame(); });
+        conn.on("open", () => { connections[id] = conn; });
         conn.on("data", data => handleData(data, id));
         conn.on("error", () => { alert("接続に失敗しました"); location.reload(); });
     });
 }
 
-function handleData(data, senderId) {
+async function handleData(data, senderId) {
     if(data.id === myId) return;
     if(data.type === "world") {
         if(data.settings) isInfiniteMode = data.settings.isInfiniteMode;
+        // 古いブロックを削除
         for(const m of blocks.values()) scene.remove(m.mesh); blocks.clear();
-        data.world.forEach(v => addBlock(v.x, v.y, v.z, v.type, false));
-        worldLoaded = true; updateUI(); updateHeldItem();
+        
+        // 【重要】分割して読み込み（フリーズ防止）
+        const total = data.world.length;
+        for(let i=0; i<total; i++) {
+            const v = data.world[i];
+            addBlock(v.x, v.y, v.z, v.type, false);
+            if(i % 300 === 0) { // 300個ごとに1フレーム空ける
+                document.getElementById("loadProgressText").innerText = Math.floor((i/total)*100) + "%";
+                await new Promise(r => setTimeout(r, 16)); 
+            }
+        }
+        document.getElementById("loadingUI").style.display = "none";
+        worldLoaded = true; 
+        startGame();
+        updateUI(); updateHeldItem();
     } else if(data.type === "player") {
         const pId = data.id || senderId;
         otherPlayers[pId] = data;
@@ -375,7 +389,7 @@ function checkStuck(x, y, z) {
 function animate(){
   requestAnimationFrame(animate);
   const now = performance.now(), delta = Math.min((now-prevTime)/1000, 0.1); prevTime=now;
-  if(!worldLoaded) { if(scene && camera) renderer.render(scene,camera); return; }
+  if(!worldLoaded) { renderer.render(scene, camera); return; } // ワールド未読込時は描画のみ
 
   let isMining = false; 
   if(locked && myHealth > 0){
