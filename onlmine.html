@@ -30,8 +30,10 @@ input{font-size:18px;padding:12px;width:85%;margin:10px 0;border-radius:5px;bord
 .count{position:absolute;bottom:1px;right:2px;font-size:11px;font-weight:bold;color:white;text-shadow:1px 1px #000;}
 #hostInfo{position:fixed;top:15px;right:15px;background:#000a;padding:12px;border-radius:8px;color:white;display:none;z-index:50;border:1px solid #555;}
 #log{position:fixed;bottom:10px;left:10px;color:white;font-size:11px;background:#0008;padding:6px;border-radius:4px;max-width:250px;max-height:100px;overflow:auto;pointer-events:none;z-index:50;}
-.settings-box { background: #222; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 18px; display: flex; align-items: center; justify-content: center; gap: 15px; border: 1px solid #444; }
+.settings-box { background: #222; padding: 15px; border-radius: 8px; margin: 10px 0; font-size: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; border: 1px solid #444; }
+.settings-row { display: flex; align-items: center; justify-content: center; gap: 15px; width: 100%; }
 .settings-box input[type="checkbox"] { width: 22px; height: 22px; margin: 0; cursor: pointer; }
+.settings-box input[type="range"] { width: 60%; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -55,8 +57,14 @@ input{font-size:18px;padding:12px;width:85%;margin:10px 0;border-radius:5px;bord
     <div id="hostSettingsUI" style="display:none">
         <h2 style="color:#ffcc00;margin-bottom:5px;font-size:20px;">ホスト設定</h2>
         <div class="settings-box">
-            <input type="checkbox" id="infiniteModeInput">
-            <label for="infiniteModeInput" style="cursor:pointer">アイテム無限</label>
+            <div class="settings-row">
+                <input type="checkbox" id="infiniteModeInput">
+                <label for="infiniteModeInput" style="cursor:pointer">アイテム無限</label>
+            </div>
+            <div class="settings-row">
+                <label>マップの広さ: <span id="chunkSizeDisplay">3</span></label>
+                <input type="range" id="chunkSizeInput" min="3" max="10" value="3" oninput="document.getElementById('chunkSizeDisplay').innerText=this.value">
+            </div>
         </div>
         <button class="large-btn" onclick="startHost()">ワールド作成</button>
         <button onclick="backToMenu()" style="background:none;border:none;color:#aaa;cursor:pointer;margin-top:10px;">戻る</button>
@@ -96,7 +104,8 @@ input{font-size:18px;padding:12px;width:85%;margin:10px 0;border-radius:5px;bord
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
 // ===== 定数と変数 =====
-const CHUNK=3, RENDER=2;
+let CHUNK=3; // ホスト設定により変動
+const RENDER=2;
 const PLAYER_H=1.6, GRAVITY=-15, JUMP=6, MOVE_SPEED=5;
 const REACH=5, blockHardness={ grass: 1.0, dirt: 1.0, stone: 3.0, bedrock: Infinity };
 
@@ -216,6 +225,7 @@ function log(msg){const l=document.getElementById("log");l.innerHTML+=msg+"<br>"
 function startHost(){
     myName = document.getElementById("userNameInput").value.trim() || "Host";
     isInfiniteMode = document.getElementById("infiniteModeInput").checked;
+    CHUNK = parseInt(document.getElementById("chunkSizeInput").value);
     const id4 = Math.floor(1000 + Math.random() * 9000).toString();
     if(peer) peer.destroy();
     peer = new Peer(id4);
@@ -311,7 +321,14 @@ function startGame() {
     if(isHost) { generateWorld(); worldLoaded = true; }
 }
 
-function generateWorld(){ for(let x=-RENDER*CHUNK; x<=RENDER*CHUNK; x++){ for(let z=-RENDER*CHUNK; z<=RENDER*CHUNK; z++){ [{y:-1,type:"grass"},{y:-2,type:"dirt"},{y:-3,type:"stone"},{y:-4,type:"stone"},{y:-5,type:"stone"},{y:-6,type:"bedrock"}].forEach(l=>addBlock(x,l.y,z,l.type,false)); } } }
+function generateWorld(){ 
+    const limit = RENDER * CHUNK;
+    for(let x=-limit; x<=limit; x++){ 
+        for(let z=-limit; z<=limit; z++){ 
+            [{y:-1,type:"grass"},{y:-2,type:"dirt"},{y:-3,type:"stone"},{y:-4,type:"stone"},{y:-5,type:"stone"},{y:-6,type:"bedrock"}].forEach(l=>addBlock(x,l.y,z,l.type,false)); 
+        } 
+    } 
+}
 
 function createOtherPlayer(peerId, name, shirtColor){
     if(playerMeshes[peerId]) return;
@@ -320,7 +337,6 @@ function createOtherPlayer(peerId, name, shirtColor){
     const shirtMat = new THREE.MeshLambertMaterial({color: shirtColor});
     const T = 0.25;
 
-    // ヒットボックスを幅広(1.0)にして必中化
     const hitbox = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.9, 1.0), new THREE.MeshBasicMaterial({ visible: false }));
     hitbox.position.y = 0.95; hitbox.userData.isHitbox = true; hitbox.userData.peerId = peerId;
     group.add(hitbox);
@@ -374,11 +390,9 @@ function animate(){
     if(!checkStuck(nx, playerY, camera.position.z)) camera.position.x=nx;
     if(!checkStuck(camera.position.x, playerY, nz)) camera.position.z=nz;
 
-    // スタック時の「横方向」押し出しロジック
     if(checkStuck(camera.position.x, playerY, camera.position.z)) {
         const ix = Math.floor(camera.position.x), iz = Math.floor(camera.position.z);
         const fx = camera.position.x - ix, fz = camera.position.z - iz;
-        // ブロックの中心から遠いほうの壁へ押し出す
         if(Math.abs(fx-0.5) > Math.abs(fz-0.5)) camera.position.x += (fx < 0.5 ? -0.1 : 0.1);
         else camera.position.z += (fz < 0.5 ? -0.1 : 0.1);
     }
@@ -434,13 +448,12 @@ document.addEventListener("keyup",e=>keys[e.code]=false);
 function setSlot(index) { document.getElementById("slot"+selectedSlot).classList.remove("active"); selectedSlot=index; document.getElementById("slot"+selectedSlot).classList.add("active"); updateHeldItem(); }
 document.addEventListener("wheel", e => { if(!locked) return; let n=selectedSlot+(e.deltaY>0?1:-1); if(n<0) n=4; if(n>4) n=0; setSlot(n); });
 
-// 必中攻撃システム
 document.addEventListener("mousedown", e => {
     if(!locked) return;
     if(e.button === 0) {
         mouseDown = true; swingTimer = 1.0;
         raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-        raycaster.far = 5.0; // 攻撃の届く距離
+        raycaster.far = 5.0; 
         const playerObjects = Object.values(playerMeshes).map(m => m.group);
         const pHits = raycaster.intersectObjects(playerObjects, true);
         if(pHits.length > 0) {
