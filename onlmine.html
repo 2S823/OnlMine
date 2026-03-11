@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>マイクラ</title>
 <style>
+/* 7:36PM版のクリーンなスタイルをベースに統一 */
 body{margin:0;overflow:hidden;background:#87ceeb;font-family:sans-serif;}
 #crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);color:white;font-size:24px;pointer-events:none;z-index:10;display:none;}
 #msg{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#0008;color:white;padding:8px 16px;border-radius:6px;z-index:10;display:none;}
@@ -12,18 +13,27 @@ body{margin:0;overflow:hidden;background:#87ceeb;font-family:sans-serif;}
 #progressBarContainer{position:fixed;bottom:160px;left:50%;transform:translateX(-50%);width:200px;height:6px;background:#0008;display:none;z-index:10;border:1px solid #fff4;}
 #progressBar{width:0%;height:100%;background:#ffcc00;}
 #netUI{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:200;color:white;}
-#menuContent{background:rgba(20,20,20,0.95);padding:30px;border-radius:15px;text-align:center;border:2px solid #444;width:400px;display:flex;flex-direction:column;gap:15px;}
+#menuContent{background:rgba(20,20,20,0.95);padding:30px;border-radius:15px;text-align:center;border:2px solid #444;width:400px;display:flex;flex-direction:column;gap:15px;max-height: 90vh; overflow-y: auto;}
 #menuContent h1{margin-top:0;font-size:36px;color:#4caf50;text-shadow:2px 2px #000;}
 input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;color:white;text-align:center;outline:none;width:85%;margin:0 auto;}
 .large-btn{font-size:18px;padding:12px;cursor:pointer;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:bold;width:100%;}
 .large-btn:hover{background:#66bb6a;}
 .join-btn{background:#2196f3;}
+.join-btn:hover{background:#42a5f5;}
 .skin-select-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
 .skin-btn{width:30px;height:30px;border:2px solid transparent;cursor:pointer;border-radius:4px;}
 .skin-btn.selected{border-color:white;box-shadow:0 0 8px white;}
 .settings-box { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; display: flex; flex-direction: column; gap: 10px; align-items: center; }
 .checkbox-container { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .checkbox-container input { width: 18px; height: 18px; margin: 0; cursor: pointer; }
+
+.world-list { width: 100%; background: #111; border-radius: 5px; max-height: 200px; overflow-y: auto; border: 1px solid #333; }
+.world-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; text-align: left; }
+.world-info { flex-grow: 1; cursor: pointer; }
+.world-name { font-size: 14px; font-weight: bold; color: #eee; }
+.world-date { font-size: 10px; color: #777; }
+.delete-btn { background: #e53935; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+
 #gameUI{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:flex-start;gap:4px;z-index:100;pointer-events:none;}
 #healthBar{display:flex;gap:1px;margin-left:2px;}
 .heart{width:18px;height:18px;color:#ff0000;font-size:22px;line-height:18px;text-shadow:2px 2px #000;display:inline-block;}
@@ -39,42 +49,58 @@ input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;
 </head>
 <body>
 
-<div id="loadingUI"><div style="font-size:24px;margin-bottom:10px;">ワールドを生成中...</div><div id="loadProgressText">0%</div></div>
-<div id="warning">ここにはブロックを設置できません</div>
+<div id="loadingUI"><div style="font-size:24px;margin-bottom:10px;">ワールドを読み込み中...</div><div id="loadProgressText">0%</div></div>
+<div id="warning">ここにブロックは置けません</div>
 
 <div id="netUI">
   <div id="menuContent">
     <h1>マイクラ</h1>
+    
+    <!-- プレイヤー設定 -->
     <input id="userNameInput" placeholder="名前を入力" maxlength="15">
     <span style="font-size:14px;color:#aaa;">服の色を選択</span>
     <div id="shirtSelect" class="skin-select-row"></div>
     
+    <!-- メインメニュー -->
     <div id="mainUI" style="display:flex; flex-direction:column; gap:10px;">
-        <button class="large-btn" onclick="showHostSettings()">ホストになる</button>
-        <button class="large-btn join-btn" onclick="showJoin()">参加する</button>
+        <button class="large-btn" onclick="showResumeUI()">ワールドを再開</button>
+        <button class="large-btn" onclick="showCreateUI()">ワールドを新規作成</button>
+        <button class="large-btn join-btn" onclick="showJoinUI()">参加する</button>
     </div>
 
-    <div id="hostSettingsUI" style="display:none">
+    <!-- ワールドを再開UI -->
+    <div id="resumeUI" style="display:none; flex-direction:column; gap:10px;">
+        <span style="font-size:14px;color:#4caf50;font-weight:bold;">保存されたワールドを選択</span>
+        <div id="worldList" class="world-list"></div>
+        <button onclick="backToMenu()" style="background:none;border:none;color:#aaa;cursor:pointer;margin-top:5px;">戻る</button>
+    </div>
+
+    <!-- ワールドを新規作成UI -->
+    <div id="createUI" style="display:none; flex-direction:column; gap:10px;">
+        <span style="font-size:14px;color:#4caf50;font-weight:bold;">新規ワールド設定</span>
         <div class="settings-box">
+            <input id="worldNameInput" placeholder="ワールド名を入力" style="font-size:14px; width:90%;">
             <label class="checkbox-container">
                 <input type="checkbox" id="infiniteModeInput"> アイテム無限
             </label>
             <label style="font-size:14px">マップ広さ: <span id="chunkDisplayValue">3</span><br>
             <input type="range" id="chunkSizeInput" min="3" max="8" value="3" oninput="document.getElementById('chunkDisplayValue').innerText=this.value"></label>
         </div>
-        <button class="large-btn" onclick="startHost()">ワールド作成</button>
-        <button onclick="backToMenu()" style="background:none;border:none;color:#aaa;cursor:pointer;">戻る</button>
+        <button class="large-btn" onclick="startHost(null)">ワールドを作成して開始</button>
+        <button onclick="backToMenu()" style="background:none;border:none;color:#aaa;cursor:pointer;margin-top:5px;">戻る</button>
     </div>
 
-    <div id="joinUI" style="display:none">
+    <!-- 参加するUI -->
+    <div id="joinUI" style="display:none; flex-direction:column; gap:10px;">
+        <span style="font-size:14px;color:#2196f3;font-weight:bold;">ホストのIDを入力</span>
         <input id="hostIdInput" placeholder="4桁のIDを入力" maxlength="4">
         <button class="large-btn join-btn" onclick="joinHost()">接続</button>
-        <button onclick="backToMenu()" style="background:none;border:none;color:#aaa;cursor:pointer;">戻る</button>
+        <button onclick="backToMenu()" style="background:none;border:none;color:#aaa;cursor:pointer;margin-top:5px;">戻る</button>
     </div>
   </div>
 </div>
 
-<div id="hostInfo">サーバーID: <span id="myId">----</span></div>
+<div id="hostInfo">サーバーID: <span id="myId">----</span> | <span id="curWorldName">---</span></div>
 <div id="crosshair">+</div>
 <div id="msg">クリックして開始</div>
 <div id="progressBarContainer"><div id="progressBar"></div></div>
@@ -87,12 +113,13 @@ input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;
 // ===== 定数と変数 =====
 let CHUNK=3; 
 const RENDER=2, PLAYER_H=1.6, GRAVITY=-15, JUMP=6, MOVE_SPEED=5, CROUCH_SPEED=1.5, REACH=5;
-const blockHardness={ grass: 1.0, dirt: 1.0, stone: 3.0, slime: 1.0, bedrock: Infinity };
-const FIXED_SKIN_TONE = 0xffcc99, FIXED_NAME_COLOR = 0xffffff;
+const blockHardness={ grass: 1.0, dirt: 1.0, stone: 3.0, slime: 0.5, bedrock: Infinity };
+const FIXED_SKIN_TONE = 0xffcc99;
 const COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00, 0x8e24aa, 0xfdd835, 0x00acc1, 0x546e7a, 0x333333];
 
 let selectedSlot = 0, shirtColor = 0x00acc1, myName = "Player";
 let isInfiniteMode = false, myHealth = 10, isDead = false, worldLoaded = false, isHostFlag = false;
+let currentWorldId = null; 
 let lastDamageTime = 0, knockbackVel = new THREE.Vector3(), swingTimer = 0, damagedFlag = false;
 let highestYDuringFall = 0, lastAttackerId = null, lastHitTime = 0;
 let peer = null, myId = null, myPlayerMesh = null;
@@ -104,10 +131,69 @@ const inventory = [
     { type: null, count: 0 }, { type: null, count: 0 }, { type: null, count: 0 }
 ];
 
+// ===== 保存処理 =====
+const SAVE_KEY = "mc_world_v2_";
+function saveWorld() {
+    if (!isHostFlag || !currentWorldId) return;
+    const data = {
+        id: currentWorldId, name: document.getElementById("curWorldName").innerText, date: new Date().toLocaleString(),
+        settings: { isInfiniteMode, CHUNK },
+        blocks: Array.from(blocks.entries()).map(([k, v]) => ({ k, type: v.type })),
+        inventory: inventory
+    };
+    localStorage.setItem(SAVE_KEY + currentWorldId, JSON.stringify(data));
+}
+function refreshWorldList() {
+    const list = document.getElementById("worldList"); list.innerHTML = "";
+    let count = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k.startsWith(SAVE_KEY)) {
+            const data = JSON.parse(localStorage.getItem(k));
+            const item = document.createElement("div"); item.className = "world-item";
+            item.innerHTML = `<div class="world-info" onclick="startHost('${data.id}')"><div class="world-name">${data.name}</div><div class="world-date">${data.date}</div></div><button class="delete-btn" onclick="deleteWorld('${data.id}', event)">削除</button>`;
+            list.appendChild(item); count++;
+        }
+    }
+    if(count === 0) list.innerHTML = "<div style='color:#666; font-size:12px; padding:15px; text-align:center;'>保存されたワールドはありません</div>";
+}
+function deleteWorld(id, e) { e.stopPropagation(); if(confirm("このワールドを削除しますか？")) { localStorage.removeItem(SAVE_KEY + id); refreshWorldList(); } }
+
+// ===== UI制御 =====
+function backToMenu() {
+    document.getElementById("mainUI").style.display = "flex";
+    document.getElementById("resumeUI").style.display = "none";
+    document.getElementById("createUI").style.display = "none";
+    document.getElementById("joinUI").style.display = "none";
+}
+function showResumeUI() {
+    document.getElementById("mainUI").style.display = "none";
+    document.getElementById("resumeUI").style.display = "flex";
+    refreshWorldList();
+}
+function showCreateUI() {
+    document.getElementById("mainUI").style.display = "none";
+    document.getElementById("createUI").style.display = "flex";
+}
+function showJoinUI() {
+    document.getElementById("mainUI").style.display = "none";
+    document.getElementById("joinUI").style.display = "flex";
+}
+
+function initUI() {
+    const shirtDiv = document.getElementById("shirtSelect"); shirtDiv.innerHTML = "";
+    COLORS.forEach(c => {
+        const btn = document.createElement("div"); btn.className = "skin-btn"; btn.style.background = "#" + c.toString(16).padStart(6, '0');
+        if(c === 0x00acc1) btn.classList.add("selected");
+        btn.onclick = () => { shirtColor = c; Array.from(shirtDiv.children).forEach(ch => ch.classList.remove("selected")); btn.classList.add("selected"); };
+        shirtDiv.appendChild(btn);
+    });
+}
+initUI();
+
 // ===== Three.js =====
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0x87ceeb);
 const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
-scene.add(camera);
 const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(window.innerWidth,window.innerHeight); renderer.shadowMap.enabled=true; document.body.appendChild(renderer.domElement);
 scene.add(new THREE.AmbientLight(0xffffff,0.7)); const sun=new THREE.DirectionalLight(0xffffff,0.8); sun.position.set(20,40,20); scene.add(sun);
 
@@ -125,80 +211,35 @@ const mats = {
     eye: new THREE.MeshBasicMaterial({ color: 0x000000 }) 
 };
 const selectionGroup = new THREE.Group(); selectionGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.001, 1.001, 1.001)), new THREE.LineBasicMaterial({ color: 0x000000 }))); scene.add(selectionGroup);
-
 const handGroup = new THREE.Group(); camera.add(handGroup);
 const handMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.4), mats.skin.clone());
 handMesh.position.set(0.45, -0.45, -0.6); handGroup.add(handMesh);
 
-function createItemMesh(type) {
-    if(!type) return null;
-    let model;
-    if(type === "pickaxe") {
-        model = new THREE.Group();
-        const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), mats.wood.clone());
-        const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.05), mats.iron.clone()); p2.position.y = 0.1;
-        model.add(p1, p2);
-    } else if(type === "shovel") {
-        model = new THREE.Group();
-        const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), mats.wood.clone());
-        const s2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.01), mats.iron.clone()); s2.position.y = 0.12;
-        model.add(s1, s2);
-    } else if(mats[type]) {
-        model = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), mats[type].clone());
-    }
-    return model;
-}
-
-function updateHeldItem() {
-    handGroup.children.forEach(c => { if(c !== handMesh) handGroup.remove(c); });
-    const item = inventory[selectedSlot];
-    if (item && item.type && (isInfiniteMode || item.count > 0 || item.count === Infinity)) {
-        const model = createItemMesh(item.type);
-        if(model) {
-            model.position.set(0.45, -0.3, -0.7); model.rotation.set(0.5, 0, 0);
-            handGroup.add(model);
-        }
-    }
-}
-
-// ===== UI & ログ =====
-function log(msg){ 
-    const l=document.getElementById("log"); const div = document.createElement("div"); 
-    div.className = "log-item"; div.innerText = msg; l.appendChild(div); 
-    setTimeout(() => { if(div.parentNode) div.remove(); }, 8000); 
-}
-function showWarning(text) { const el = document.getElementById("warning"); el.innerText = text; el.style.display = "block"; clearTimeout(window.warningTimer); window.warningTimer = setTimeout(() => el.style.display = "none", 2000); }
-function showHostSettings() { document.getElementById("mainUI").style.display="none"; document.getElementById("hostSettingsUI").style.display="flex"; document.getElementById("hostSettingsUI").style.flexDirection="column"; }
-function showJoin() { document.getElementById("mainUI").style.display="none"; document.getElementById("joinUI").style.display="flex"; document.getElementById("joinUI").style.flexDirection="column"; }
-function backToMenu() { document.getElementById("mainUI").style.display="flex"; document.getElementById("hostSettingsUI").style.display="none"; document.getElementById("joinUI").style.display="none"; }
-
-function initUI() {
-    const shirtDiv = document.getElementById("shirtSelect");
-    shirtDiv.innerHTML = "";
-    COLORS.forEach(c => {
-        const btn = document.createElement("div"); btn.className = "skin-btn"; btn.style.background = "#" + c.toString(16).padStart(6, '0');
-        if(c === 0x00acc1) btn.classList.add("selected");
-        btn.onclick = () => { shirtColor = c; Array.from(shirtDiv.children).forEach(ch => ch.classList.remove("selected")); btn.classList.add("selected"); };
-        shirtDiv.appendChild(btn);
-    });
-}
-initUI();
-
 // ===== ネットワーク =====
 const connections={}; const otherPlayers={}; const playerMeshes={};
-function startHost(){
+async function startHost(loadId){
     myName = document.getElementById("userNameInput").value.trim() || "Host"; 
-    isInfiniteMode = document.getElementById("infiniteModeInput").checked; 
-    CHUNK = parseInt(document.getElementById("chunkSizeInput").value);
+    let loadedData = null;
+    if(loadId) {
+        loadedData = JSON.parse(localStorage.getItem(SAVE_KEY + loadId));
+        currentWorldId = loadId; isInfiniteMode = loadedData.settings.isInfiniteMode; CHUNK = loadedData.settings.CHUNK;
+        document.getElementById("curWorldName").innerText = loadedData.name;
+    } else {
+        currentWorldId = Date.now().toString();
+        const inputName = document.getElementById("worldNameInput").value.trim() || "新しい世界";
+        document.getElementById("curWorldName").innerText = inputName;
+        isInfiniteMode = document.getElementById("infiniteModeInput").checked; 
+        CHUNK = parseInt(document.getElementById("chunkSizeInput").value);
+    }
     const id4 = Math.floor(1000 + Math.random() * 9000).toString();
     if(peer) peer.destroy();
     peer = new Peer(id4);
-    peer.on("open", id => { isHostFlag = true; myId = id; document.getElementById("myId").textContent = id; worldLoaded = true; startGame(); });
+    peer.on("open", id => { isHostFlag = true; myId = id; document.getElementById("myId").textContent = id; startGame(loadedData); });
     peer.on("connection", conn => {
         conn.on("open", () => {
             connections[conn.peer] = conn;
             const world=[]; for(const [k,v] of blocks){ const [x,y,z]=k.split(",").map(Number); world.push({x,y,z,type:v.type}); }
-            conn.send({type:"world", world, settings: {isInfiniteMode}});
+            conn.send({type:"world", world, settings: {isInfiniteMode}, worldName: document.getElementById("curWorldName").innerText});
         });
         conn.on("data", data => handleData(data, conn.peer));
         conn.on("close", () => removeOtherPlayer(conn.peer));
@@ -219,7 +260,9 @@ function joinHost(){
 async function handleData(data, senderId) {
     if(data.id === myId) return;
     if(data.type === "world") {
-        if(data.settings) isInfiniteMode = data.settings.isInfiniteMode; worldLoaded = true;
+        if(data.settings) isInfiniteMode = data.settings.isInfiniteMode;
+        document.getElementById("curWorldName").innerText = data.worldName || "参加中";
+        worldLoaded = true;
         for(const m of blocks.values()) scene.remove(m.mesh); blocks.clear();
         for(let i=0; i<data.world.length; i++) {
             const v = data.world[i]; addBlock(v.x, v.y, v.z, v.type, false);
@@ -232,29 +275,26 @@ async function handleData(data, senderId) {
         otherPlayers[pId] = data;
         if(data.damaged) flashPlayerRed(pId);
         if(isHostFlag) sendToAll(data, senderId);
-    } else if(data.type === "addBlock") { addBlock(data.x, data.y, data.z, data.blockType, false); if(isHostFlag) sendToAll(data, senderId);
-    } else if(data.type === "break") { removeBlock(data.x, data.y, data.z, false); if(isHostFlag) sendToAll(data, senderId);
-    } else if(data.type === "attack") { if(data.target === myId) takeDamage(data.dmg, data.attackerPos, senderId); if(isHostFlag) sendToAll(data, senderId);
-    } else if(data.type === "log") { log(data.msg); if(isHostFlag) sendToAll(data, senderId); }
+    } else if(data.type === "addBlock") { addBlock(data.x, data.y, data.z, data.blockType, false); if(isHostFlag) { sendToAll(data, senderId); saveWorld(); }
+    } else if(data.type === "break") { removeBlock(data.x, data.y, data.z, false); if(isHostFlag) { sendToAll(data, senderId); saveWorld(); }
+    } else if(data.type === "attack") {
+        const attacker = data.attackerId || senderId;
+        if(data.target === myId) takeDamage(data.dmg, data.attackerPos, attacker);
+        if(isHostFlag) sendToAll(data, senderId);
+    } else if(data.type === "log") log(data.msg);
 }
 
-function flashPlayerRed(id) { 
-    const m = playerMeshes[id]; if(!m) return; 
-    m.group.traverse(c => { if(c.isMesh && c.material && c.material.emissive) c.material.emissive.set(0xff0000); }); 
-    setTimeout(() => { if(m && m.group) m.group.traverse(c => { if(c.isMesh && c.material && c.material.emissive) c.material.emissive.set(0x000000); }); }, 200); 
-}
-
-// ===== 物理・衝突判定 =====
+// ===== 物理・ゲームロジック =====
 const blocks=new Map(); const boxGeo=new THREE.BoxGeometry(1,1,1);
 function addBlock(x,y,z,type,send=true){
   const k=`${x},${y},${z}`; if(blocks.has(k)) return;
   const mesh=new THREE.Mesh(boxGeo, mats[type]); mesh.position.set(x+0.5,y+0.5,z+0.5); scene.add(mesh); blocks.set(k,{mesh,type});
-  if(send){ const d = {type:"addBlock",x,y,z,blockType:type}; if(isHostFlag) sendToAll(d); else sendToHost(d); }
+  if(send){ const d = {type:"addBlock",x,y,z,blockType:type}; if(isHostFlag) { sendToAll(d); saveWorld(); } else sendToHost(d); }
 }
 function removeBlock(x,y,z,send=true){
   const k=`${x},${y},${z}`; const b=blocks.get(k); if(!b) return;
   scene.remove(b.mesh); blocks.delete(k);
-  if(send){ const d = {type:"break",x,y,z}; if(isHostFlag) sendToAll(d); else sendToHost(d); }
+  if(send){ const d = {type:"break",x,y,z}; if(isHostFlag) { sendToAll(d); saveWorld(); } else sendToHost(d); }
 }
 function checkStuck(x, y, z) {
     const r = 0.3; const pts = [[x-r,z-r],[x+r,z-r],[x-r,z+r],[x+r,z+r]];
@@ -267,7 +307,12 @@ function hasGround(x, y, z) {
     for(let p of pts) if(blocks.has(`${Math.floor(p[0])},${iy},${Math.floor(p[1])}`)) return true;
     return false;
 }
-
+function hitsCeiling(x, y, z) {
+    const r = 0.3; const iy = Math.floor(y + 0.1); 
+    const pts = [[x-r,z-r],[x+r,z-r],[x-r,z+r],[x+r,z+r],[x,z]];
+    for(let p of pts) if(blocks.has(`${Math.floor(p[0])},${iy},${Math.floor(p[1])}`)) return true;
+    return false;
+}
 function takeDamage(amount, attackerPos = null, attackerId = null) {
     if(isDead) return;
     myHealth -= amount; damagedFlag = true;
@@ -275,85 +320,112 @@ function takeDamage(amount, attackerPos = null, attackerId = null) {
     if(attackerPos) { const dir = new THREE.Vector3().subVectors(camera.position, attackerPos).normalize(); dir.y = 0; knockbackVel.copy(dir.multiplyScalar(10)); velocityY = 4; }
     updateUI(); if(myHealth <= 0) processDeath();
 }
-
 function processDeath() {
     if(isDead) return; isDead = true; myHealth = 0; updateUI();
     const attackerName = (performance.now() - lastHitTime < 5000 && lastAttackerId && otherPlayers[lastAttackerId]) ? otherPlayers[lastAttackerId].name : null;
-    const msg = attackerName ? `${myName} は ${attackerName} に倒された` : `${myName} は力尽きた`;
-    log(msg); if(isHostFlag) sendToAll({type:"log", msg}); else sendToHost({type:"log", msg});
+    let msg; const fallDist = highestYDuringFall - playerY;
+    if(attackerName && fallDist > 3) msg = `${myName}は${attackerName}に突き落とされた`;
+    else if(attackerName) msg = `${myName}は${attackerName}に倒された`;
+    else msg = `${myName}は力尽きた`;
+    log(msg);
+    if(isHostFlag) sendToAll({type:"log", msg}); else sendToHost({type:"log", msg});
     setTimeout(() => { 
-        myHealth = 10; velocityY = 0; isDead = false; knockbackVel.set(0,0,0); 
-        camera.position.set(0.5, 2.5, 0.5); playerY = 2.5 + PLAYER_H; 
-        highestYDuringFall = playerY; lastAttackerId = null; updateUI(); 
+        myHealth = 10; velocityY = 0; isDead = false; knockbackVel.set(0,0,0);
+        camera.position.set(0.5, 2.5, 0.5); playerY = 2.5 + PLAYER_H;
+        highestYDuringFall = playerY; lastAttackerId = null; updateUI();
     }, 2000);
 }
 
-// ===== モデル生成 =====
-function startGame() { 
+function startGame(loadedData) { 
     document.getElementById("netUI").style.display="none"; document.getElementById("hostInfo").style.display="block"; 
     document.getElementById("gameUI").style.display="flex"; document.getElementById("crosshair").style.display="block"; 
     updateUI(); updateHeldItem(); camera.position.set(0.5, 2.5, 0.5); playerY = 2.5 + PLAYER_H; 
     myPlayerMesh = createOtherPlayerModel(myId, myName, shirtColor); myPlayerMesh.group.visible = false; 
     highestYDuringFall = playerY;
     if(isHostFlag) { 
-        const limit = RENDER * CHUNK;
-        for(let x=-limit; x<=limit; x++) for(let z=-limit; z<=limit; z++) [{y:-1,type:"grass"},{y:-2,type:"dirt"},{y:-3,type:"stone"},{y:-4,type:"stone"},{y:-5,type:"stone"},{y:-6,type:"bedrock"}].forEach(l=>addBlock(x,l.y,z,l.type,false));
-    } 
+        if(loadedData) {
+            loadedData.blocks.forEach(b => { const [x, y, z] = b.k.split(",").map(Number); addBlock(x, y, z, b.type, false); });
+            if(loadedData.inventory) for(let i=0; i<9; i++) if(loadedData.inventory[i]) inventory[i] = loadedData.inventory[i];
+        } else {
+            const limit = RENDER * CHUNK;
+            for(let x=-limit; x<=limit; x++){
+                for(let z=-limit; z<=limit; z++){
+                    if(isInfiniteMode){ addBlock(x,-1,z,"grass",false); addBlock(x,-2,z,"dirt",false); addBlock(x,-3,z,"bedrock",false); }
+                    else { addBlock(x,-1,z,"grass",false); addBlock(x,-2,z,"dirt",false); addBlock(x,-3,z,"stone",false); addBlock(x,-4,z,"stone",false); addBlock(x,-5,z,"stone",false); addBlock(x,-6,z,"bedrock",false); }
+                }
+            }
+            saveWorld();
+        }
+    }
     worldLoaded = true;
 }
 
+// ===== 描画・モデル関連 =====
+function createItemMesh(type) {
+    if(!type) return null;
+    let model;
+    if(type === "pickaxe") {
+        model = new THREE.Group();
+        const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), mats.wood.clone());
+        const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.05), mats.iron.clone()); p2.position.y = 0.1;
+        model.add(p1, p2);
+    } else if(type === "shovel") {
+        model = new THREE.Group();
+        const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), mats.wood.clone());
+        const s2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.01), mats.iron.clone()); s2.position.y = 0.12;
+        model.add(s1, s2);
+    } else if(mats[type]) model = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), mats[type].clone());
+    return model;
+}
+function updateHeldItem() {
+    handGroup.children.forEach(c => { if(c !== handMesh) handGroup.remove(c); });
+    const item = inventory[selectedSlot];
+    if (item && item.type && (isInfiniteMode || item.count > 0 || item.count === Infinity)) {
+        const model = createItemMesh(item.type);
+        if(model) { model.position.set(0.45, -0.3, -0.7); model.rotation.set(0.5, 0, 0); handGroup.add(model); }
+    }
+}
 function createOtherPlayerModel(peerId, name, shirt){
     const group = new THREE.Group(); group.userData.peerId = peerId;
     const bodyGroup = new THREE.Group(); bodyGroup.position.y = 0.75; group.add(bodyGroup);
     const shirtMat = new THREE.MeshLambertMaterial({color: shirt}), skinMat = new THREE.MeshLambertMaterial({color: FIXED_SKIN_TONE});
-    
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.75, 0.25), shirtMat.clone()); body.position.y = 0.375; bodyGroup.add(body);
     const headJoint = new THREE.Group(); headJoint.add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skinMat.clone())); 
     const hair = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.15, 0.42), mats.hair.clone()); hair.position.y = 0.15; headJoint.add(hair);
     const eyeG = new THREE.BoxGeometry(0.08, 0.04, 0.01); const eL = new THREE.Mesh(eyeG, mats.eye.clone()); eL.position.set(-0.1, 0, -0.201); const eR = new THREE.Mesh(eyeG, mats.eye.clone()); eR.position.set(0.1, 0, -0.201); headJoint.add(eL, eR); headJoint.position.y = 0.95; bodyGroup.add(headJoint);
-    
     const armL = new THREE.Group(); const aLM = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.75, 0.25), shirtMat.clone()); aLM.position.y = -0.375; armL.add(aLM); armL.position.set(-0.335, 0.75, 0); bodyGroup.add(armL);
     const armR = new THREE.Group(); const aRM = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.75, 0.25), shirtMat.clone()); aRM.position.y = -0.375; armR.add(aRM); armR.position.set(0.335, 0.75, 0); bodyGroup.add(armR);
     const itemSlot = new THREE.Group(); itemSlot.position.set(0, -0.7, -0.1); armR.add(itemSlot);
-    
     const legL = new THREE.Group(); const lLM = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.75, 0.25), mats.pants.clone()); lLM.position.y = -0.375; legL.add(lLM); legL.position.set(-0.11, 0.75, 0); group.add(legL);
     const legR = new THREE.Group(); const lRM = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.75, 0.25), mats.pants.clone()); lRM.position.y = -0.375; legR.add(lRM); legR.position.set(0.11, 0.75, 0); group.add(legR);
-    
     const label = createNameLabel(name || "Player"); label.position.y = 2.1; group.add(label);
     scene.add(group); 
     playerMeshes[peerId] = {group, bodyGroup, head: headJoint, legL, legR, armL, armR, itemSlot, lastItem: null};
     return playerMeshes[peerId];
 }
 function createNameLabel(text) {
-    const canvas = document.createElement("canvas"); canvas.width = 256; canvas.height = 64; const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0, 0, 256, 64); ctx.fillStyle = "white"; ctx.font = "bold 32px Arial"; ctx.textAlign = "center"; ctx.fillText(text, 128, 45);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(canvas)}));
-    sprite.scale.set(1.2, 0.3, 1); return sprite;
+    const canvas = document.createElement("canvas"); const ctx = canvas.getContext("2d"); ctx.font = "bold 32px Arial";
+    const textWidth = ctx.measureText(text).width; canvas.width = textWidth + 40; canvas.height = 64;
+    ctx.font = "bold 32px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white"; ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    const texture = new THREE.CanvasTexture(canvas); const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
+    sprite.scale.set(canvas.width / 200, 0.3, 1); return sprite;
 }
 function removeOtherPlayer(id) { if(playerMeshes[id]){ scene.remove(playerMeshes[id].group); const name = otherPlayers[id]?.name || "Player"; log(name + " が退出しました"); delete playerMeshes[id]; delete otherPlayers[id]; } }
-
 function updatePlayerAnimation(m, p, now) {
     if(!m) return; 
-    if(p.isDead) { m.group.rotation.z = Math.PI / 2; m.group.position.y = (p.y - PLAYER_H) + 0.2; return; } else { m.group.rotation.z = 0; }
+    if(p.isDead) { m.group.rotation.z = Math.PI / 2; m.group.position.y = (p.y - PLAYER_H) + 0.2; return; } else m.group.rotation.z = 0;
     m.group.rotation.y = p.yaw;
     if(p.crouching) { m.bodyGroup.rotation.x = -0.35; m.bodyGroup.position.y = 0.7; m.head.rotation.x = p.pitch + 0.35; }
     else { m.bodyGroup.rotation.x = 0; m.bodyGroup.position.y = 0.75; m.head.rotation.x = p.pitch; }
     const s = Math.sin(now * 0.012);
     if(p.moving){ m.legL.rotation.x = s * 0.7; m.legR.rotation.x = -s * 0.7; m.armL.rotation.x = -s * 0.5; m.armR.rotation.x = s * 0.5; } 
-    else { m.legL.rotation.x = m.legR.rotation.x = m.armL.rotation.x = m.armR.rotation.x = 0; }
-    if(p.digging){ m.armR.rotation.x = 0 + Math.abs(Math.sin(now * 0.015)) * 1.0; }
-    if(p.item !== m.lastItem) {
-        m.itemSlot.clear(); const iM = createItemMesh(p.item);
-        if(iM) {
-            iM.rotation.x = Math.PI / 2;
-            iM.rotation.z = Math.PI; // アイテムの前後向き修正
-            m.itemSlot.add(iM);
-        }
-        m.lastItem = p.item;
-    }
+    else m.legL.rotation.x = m.legR.rotation.x = m.armL.rotation.x = m.armR.rotation.x = 0;
+    if(p.digging) m.armR.rotation.x = 0 + Math.abs(Math.sin(now * 0.015)) * 1.0;
+    if(p.item !== m.lastItem) { m.itemSlot.clear(); const iM = createItemMesh(p.item); if(iM) { iM.rotation.x = Math.PI / 2; iM.rotation.z = Math.PI; m.itemSlot.add(iM); } m.lastItem = p.item; }
 }
 
-// ===== メインループ =====
 let playerY=PLAYER_H+2, velocityY=0, onGround=false, prevTime=performance.now(), locked=false;
 const keys={}; let mouseDown=false; let breaking=null;
 
@@ -361,29 +433,24 @@ function animate(){
   requestAnimationFrame(animate);
   const now = performance.now(), delta = Math.min((now-prevTime)/1000, 0.1); prevTime=now;
   if(!worldLoaded) { if(renderer) renderer.render(scene, camera); return; }
-  
   let isMining = false, isCrouching = keys["ShiftLeft"] && onGround;
   velocityY += GRAVITY * delta;
   let nextY = playerY + velocityY * delta;
   if (!onGround && playerY > highestYDuringFall) highestYDuringFall = playerY;
-
-  // 接地判定
-  if (velocityY <= 0 && hasGround(camera.position.x, nextY, camera.position.z)) {
-      if (!onGround && !isDead) {
-          const fallDist = highestYDuringFall - playerY;
-          const groundPos = `${Math.floor(camera.position.x)},${Math.floor(nextY - PLAYER_H - 0.1)},${Math.floor(camera.position.z)}`;
-          const blockBelow = blocks.get(groundPos);
-          const isSlime = blockBelow && blockBelow.type === "slime";
-          
-          if (fallDist > 3.5 && !isSlime) takeDamage(Math.floor(fallDist - 3));
-          highestYDuringFall = playerY;
-      }
-      playerY = Math.floor(nextY - PLAYER_H - 0.05) + 1 + PLAYER_H; velocityY = 0; onGround = true;
-  } else { playerY = nextY; onGround = false; }
+  if (velocityY > 0) { if (hitsCeiling(camera.position.x, nextY, camera.position.z)) { velocityY = 0; playerY = Math.floor(nextY) - 0.01; } else playerY = nextY; onGround = false; }
+  else {
+      if (hasGround(camera.position.x, nextY, camera.position.z)) {
+          if (!onGround && !isDead) {
+              const fallDist = highestYDuringFall - playerY; const groundPos = `${Math.floor(camera.position.x)},${Math.floor(nextY - PLAYER_H - 0.05)},${Math.floor(camera.position.z)}`;
+              const blockBelow = blocks.get(groundPos); if (fallDist > 3.5 && (!blockBelow || blockBelow.type !== "slime")) takeDamage(Math.floor(fallDist - 3));
+              highestYDuringFall = playerY;
+          }
+          playerY = Math.floor(nextY - PLAYER_H - 0.05) + 1 + PLAYER_H; velocityY = 0; onGround = true;
+      } else { playerY = nextY; onGround = false; }
+  }
+  if (!isDead) { let safetyCount = 0; while (checkStuck(camera.position.x, playerY, camera.position.z) && safetyCount < 10) { playerY += 0.1; velocityY = 0; onGround = true; safetyCount++; } }
   if(playerY < -30) processDeath();
-
-  const move = new THREE.Vector3();
-  const isMovingInput = (keys["KeyW"] || keys["KeyS"] || keys["KeyA"] || keys["KeyD"]) && locked;
+  const move = new THREE.Vector3(); const isMovingInput = (keys["KeyW"] || keys["KeyS"] || keys["KeyA"] || keys["KeyD"]) && locked;
   if(locked && !isDead){
     const fwd=new THREE.Vector3(-Math.sin(camera.rotation.y),0,-Math.cos(camera.rotation.y)), rt=new THREE.Vector3(Math.cos(camera.rotation.y),0,-Math.sin(camera.rotation.y));
     if(keys["KeyW"]) move.add(fwd); if(keys["KeyS"]) move.sub(fwd); if(keys["KeyA"]) move.sub(rt); if(keys["KeyD"]) move.add(rt);
@@ -391,18 +458,12 @@ function animate(){
     if(keys["Space"] && onGround) { velocityY=JUMP; onGround=false; highestYDuringFall = playerY; }
   }
   move.add(knockbackVel.clone().multiplyScalar(delta)); knockbackVel.multiplyScalar(0.85);
-
-  if (isCrouching && onGround) {
-      if (!hasGround(camera.position.x + move.x, playerY, camera.position.z)) move.x = 0;
-      if (!hasGround(camera.position.x, playerY, camera.position.z + move.z)) move.z = 0;
-  }
+  if (isCrouching && onGround) { if (!hasGround(camera.position.x + move.x, playerY, camera.position.z)) move.x = 0; if (!hasGround(camera.position.x, playerY, camera.position.z + move.z)) move.z = 0; }
   if(!checkStuck(camera.position.x + move.x, playerY, camera.position.z)) camera.position.x += move.x;
   if(!checkStuck(camera.position.x, playerY, camera.position.z + move.z)) camera.position.z += move.z;
-
   if(!isDead) {
-    if(swingTimer > 0) { swingTimer -= delta * 5; handGroup.rotation.x = -Math.sin(swingTimer * Math.PI) * 1.2; } else { handGroup.rotation.x = 0; }
-    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0),camera);
-    const hits=ray.intersectObjects([...blocks.values()].map(b=>b.mesh));
+    if(swingTimer > 0) { swingTimer -= delta * 5; handGroup.rotation.x = -Math.sin(swingTimer * Math.PI) * 1.2; } else handGroup.rotation.x = 0;
+    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0),camera); const hits=ray.intersectObjects([...blocks.values()].map(b=>b.mesh));
     if(hits.length>0 && hits[0].distance<=REACH){
       const hit=hits[0].object; selectionGroup.visible = true; selectionGroup.position.copy(hit.position);
       let tK = null, tD = null; for(const [k,v] of blocks){ if(v.mesh === hit){ tK = k; tD = v; break; } }
@@ -411,37 +472,29 @@ function animate(){
         if(!breaking || breaking.x !== tx || breaking.y !== ty || breaking.z !== tz) { breaking = {x:tx, y:ty, z:tz, type:tD.type, progress:0}; document.getElementById("progressBarContainer").style.display="block"; }
         let toolBonus = (inventory[selectedSlot] && ((inventory[selectedSlot].type === "pickaxe" && tD.type === "stone") || (inventory[selectedSlot].type === "shovel" && (tD.type === "grass" || tD.type === "dirt")))) ? 2.0 : 1.0;
         breaking.progress += delta * toolBonus; const ratio = breaking.progress / blockHardness[tD.type]; document.getElementById("progressBar").style.width = Math.min(ratio*100, 100) + "%";
-        if(ratio >= 1) { 
-            const invSlot = inventory.find(inv => inv && inv.type === tD.type); 
-            if(invSlot) { invSlot.count++; updateUI(); updateHeldItem(); } 
-            removeBlock(tx, ty, tz); cancelBreaking(); 
-        }
+        if(ratio >= 1) { const invSlot = inventory.find(inv => inv && inv.type === tD.type); if(invSlot) { invSlot.count++; updateUI(); updateHeldItem(); } removeBlock(tx, ty, tz); cancelBreaking(); }
         handGroup.rotation.x = -Math.abs(Math.sin(now * 0.012)) * 0.6;
       } else if(!mouseDown) cancelBreaking();
     } else { selectionGroup.visible = false; cancelBreaking(); }
   }
-
   for(const id in playerMeshes){ const p=otherPlayers[id]; const m=playerMeshes[id]; if(p && m.group) { m.group.position.lerp(new THREE.Vector3(p.x, p.y-PLAYER_H, p.z), 0.2); updatePlayerAnimation(m, p, now); } }
-  
   if(myPlayerMesh) {
     updatePlayerAnimation(myPlayerMesh, {yaw:camera.rotation.y, pitch:camera.rotation.x, crouching:isCrouching, moving:isMovingInput, digging:isMining||swingTimer>0, item:inventory[selectedSlot]?inventory[selectedSlot].type:null, isDead}, now);
-    myPlayerMesh.group.position.set(camera.position.x, playerY-PLAYER_H, camera.position.z);
-    camera.position.y = playerY-(isCrouching?0.3:0);
-    renderer.render(scene, camera);
+    myPlayerMesh.group.position.set(camera.position.x, playerY-PLAYER_H, camera.position.z); camera.position.y = playerY-(isCrouching?0.3:0); renderer.render(scene, camera);
   }
   if(peer && myId) sendPlayerState(isMining, isCrouching); 
 }
 animate();
 
+// ===== イベント =====
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-
 function cancelBreaking() { breaking = null; document.getElementById("progressBarContainer").style.display = "none"; }
+function log(msg){ const l=document.getElementById("log"); const div = document.createElement("div"); div.className = "log-item"; div.innerText = msg; l.appendChild(div); setTimeout(() => { if(div.parentNode) div.remove(); }, 8000); }
 document.body.addEventListener("click",(e)=>{ if(worldLoaded && e.target.tagName !== "BUTTON" && e.target.tagName !== "INPUT") renderer.domElement.requestPointerLock(); });
 document.addEventListener("pointerlockchange",()=>{ locked=document.pointerLockElement===renderer.domElement; document.getElementById("msg").style.display=(locked || !worldLoaded)?"none":"block"; });
 document.addEventListener("mousemove",e=>{ if(!locked) return; camera.rotation.order="YXZ"; camera.rotation.y -= e.movementX*0.002; camera.rotation.x -= e.movementY*0.002; camera.rotation.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,camera.rotation.x)); });
-document.addEventListener("keydown",e=>{ keys[e.code]=true; if(e.code.startsWith("Digit")){ let n=parseInt(e.code.replace("Digit",""))-1; if(n>=0&&n<inventory.length) { selectedSlot=n; updateUI(); updateHeldItem(); } } });
+document.addEventListener("keydown",e=>{ keys[e.code]=true; if(e.code.startsWith("Digit")){ let n=parseInt(e.code.replace("Digit",""))-1; if(n>=0&&n<9) { selectedSlot=n; updateUI(); updateHeldItem(); } } });
 document.addEventListener("keyup",e=>keys[e.code]=false);
-
 document.addEventListener("mousedown", e => {
     if(!locked || isDead) return;
     if(e.button === 0) {
@@ -450,35 +503,25 @@ document.addEventListener("mousedown", e => {
         const targets = []; for(let id in playerMeshes) if(id !== myId) targets.push(playerMeshes[id].group);
         const hits = ray.intersectObjects(targets, true);
         if(hits.length > 0) {
-            let tId = null; let obj = hits[0].object;
-            while(obj) { if(obj.userData.peerId) { tId = obj.userData.peerId; break; } obj = obj.parent; }
-            if(tId) { const atk = {type:"attack", target:tId, dmg:1, attackerPos:camera.position}; if(isHostFlag) handleData(atk, myId); else sendToHost(atk); }
+            let tId = null; let obj = hits[0].object; while(obj) { if(obj.userData.peerId) { tId = obj.userData.peerId; break; } obj = obj.parent; }
+            if(tId) { const atk = { type:"attack", target:tId, dmg:1, attackerPos:camera.position, attackerId: myId }; if(isHostFlag) handleData(atk, myId); else sendToHost(atk); }
         }
     }
     if(e.button === 2) placeBlock();
 });
 document.addEventListener("mouseup", e => { if(e.button === 0) mouseDown = false; });
 document.addEventListener("contextmenu", e => e.preventDefault());
-
 function placeBlock() {
     const item = inventory[selectedSlot]; if (!item || !item.type || (!isInfiniteMode && item.count <= 0)) return; 
-    if (selectedSlot >= 4 && item.type !== "slime") return; 
-    
-    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0),camera);
-    const hits=ray.intersectObjects([...blocks.values()].map(b=>b.mesh));
+    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0),camera); const hits=ray.intersectObjects([...blocks.values()].map(b=>b.mesh));
     if(hits.length>0 && hits[0].distance<=REACH){
-        const pos = hits[0].object.position.clone().add(hits[0].face.normal);
-        const bx = Math.floor(pos.x), by = Math.floor(pos.y), bz = Math.floor(pos.z);
-        if (Math.abs(bx) <= 1 && Math.abs(bz) <= 1 && by >= -2 && by <= 5) { showWarning("ここにはブロックを設置できません"); return; }
+        const pos = hits[0].object.position.clone().add(hits[0].face.normal); const bx = Math.floor(pos.x), by = Math.floor(pos.y), bz = Math.floor(pos.z);
         const myFeetY = Math.floor(playerY - PLAYER_H), myHeadY = Math.floor(playerY - 0.2);
         if (bx === Math.floor(camera.position.x) && bz === Math.floor(camera.position.z) && (by >= myFeetY && by <= myHeadY)) return;
         for (const id in otherPlayers) { const p = otherPlayers[id]; if (bx === Math.floor(p.x) && bz === Math.floor(p.z) && (by >= Math.floor(p.y - PLAYER_H) && by <= Math.floor(p.y - 0.2))) return; }
-        
-        addBlock(bx, by, bz, item.type); 
-        if(!isInfiniteMode && item.count !== Infinity) { item.count--; updateUI(); updateHeldItem(); }
+        addBlock(bx, by, bz, item.type); if(!isInfiniteMode && item.count !== Infinity) { item.count--; updateUI(); updateHeldItem(); }
     }
 }
-
 function sendPlayerState(digging, crouching){ 
     const isMoving = (keys["KeyW"]||keys["KeyS"]||keys["KeyA"]||keys["KeyD"]) && locked;
     const d = {type:"player",id:myId,name:myName,x:camera.position.x,y:playerY,z:camera.position.z,yaw:camera.rotation.y,pitch:camera.rotation.x,shirtColor,damaged:damagedFlag,crouching,isDead,moving:isMoving,digging:digging||swingTimer>0,item:inventory[selectedSlot]?inventory[selectedSlot].type:null}; 
@@ -486,7 +529,6 @@ function sendPlayerState(digging, crouching){
 }
 function sendToAll(data, excludePeer=null){ for(let id in connections) if(id !== excludePeer) connections[id].send(data); }
 function sendToHost(data){ const c = Object.values(connections)[0]; if(c) c.send(data); }
-
 function updateUI() { 
     const hb = document.getElementById("healthBar"); hb.innerHTML = "";
     for(let i=0; i<10; i++) hb.innerHTML += `<span class="heart ${myHealth > i ? '' : 'empty'}">♥</span>`;
@@ -502,6 +544,7 @@ function updateUI() {
         hot.innerHTML += `<div class="slot ${selectedSlot === i ? 'active' : ''}">${content}<div style="position:absolute;bottom:0;right:2px;font-size:10px;color:white;">${countText}</div></div>`;
     }
 }
+function flashPlayerRed(id) { const m = playerMeshes[id]; if(!m) return; m.group.traverse(c => { if(c.isMesh && c.material && c.material.emissive) c.material.emissive.set(0xff0000); }); setTimeout(() => { if(m && m.group) m.group.traverse(c => { if(c.isMesh && c.material && c.material.emissive) c.material.emissive.set(0x000000); }); }, 200); }
 </script>
 </body>
 </html>
