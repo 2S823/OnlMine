@@ -119,13 +119,13 @@ const inventory = [
     { type: null, count: 0 }, { type: null, count: 0 }, { type: null, count: 0 }
 ];
 
-// ===== テクスチャとマテリアル設定 (修正点) =====
+// ===== テクスチャとマテリアル設定 =====
 const loader = new THREE.TextureLoader();
 function loadTex(url) {
     const t = loader.load(url);
     t.magFilter = THREE.NearestFilter;
     t.minFilter = THREE.NearestFilter;
-    t.colorSpace = THREE.SRGBColorSpace; // テクスチャの色空間を補正（暗くなるのを防ぐ）
+    t.colorSpace = THREE.SRGBColorSpace;
     return t;
 }
 
@@ -143,11 +143,11 @@ const mats = {
     stone: new THREE.MeshLambertMaterial({ map: textures.stone }), 
     slime: new THREE.MeshLambertMaterial({ map: textures.slime, transparent: true, opacity: 1.1 }),
     bedrock: new THREE.MeshLambertMaterial({ map: textures.bedrock }), 
-    grass: [ // 右, 左, 上, 下, 前, 後
+    grass: [
         new THREE.MeshLambertMaterial({ map: textures.grassSide }),
         new THREE.MeshLambertMaterial({ map: textures.grassSide }),
         new THREE.MeshLambertMaterial({ map: textures.grassTop, color: 0xa2ff57  }),
-        new THREE.MeshLambertMaterial({ map: textures.dirt }), // 下面
+        new THREE.MeshLambertMaterial({ map: textures.dirt }),
         new THREE.MeshLambertMaterial({ map: textures.grassSide }),
         new THREE.MeshLambertMaterial({ map: textures.grassSide })
     ],
@@ -206,10 +206,9 @@ const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87ceeb);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({antialias:true}); 
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace; // 出力を鮮やかに
+renderer.outputColorSpace = THREE.SRGBColorSpace; 
 document.body.appendChild(renderer.domElement);
 
-// ライト（全体を明るくする）
 scene.add(new THREE.AmbientLight(0xffffff, 1.2)); 
 const sun = new THREE.DirectionalLight(0xffffff, 0.6); 
 sun.position.set(20, 40, 20); scene.add(sun);
@@ -221,15 +220,48 @@ handMesh.position.set(0.45, -0.45, -0.6); handGroup.add(handMesh);
 scene.add(camera);
 
 const blocks=new Map(); const boxGeo=new THREE.BoxGeometry(1,1,1);
+
+// --- カリング用ヘルパー ---
+function getBlockMaterials(type) {
+    let m = mats[type];
+    if (Array.isArray(m)) return m.map(mat => mat.clone());
+    return [m.clone(), m.clone(), m.clone(), m.clone(), m.clone(), m.clone()];
+}
+function updateBlockFaces(x, y, z) {
+    const k = `${x},${y},${z}`;
+    const b = blocks.get(k);
+    if (!b) return;
+    const neighbors = [`${x+1},${y},${z}`, `${x-1},${y},${z}`, `${x},${y+1},${z}`, `${x},${y-1},${z}`, `${x},${y},${z+1}`, `${x},${y},${z-1}`];
+    neighbors.forEach((nk, i) => {
+        const neighbor = blocks.get(nk);
+        if (!neighbor) {
+            b.mesh.material[i].visible = true;
+        } else {
+            const isNeighborTransparent = (neighbor.type === "slime");
+            const isSelfTransparent = (b.type === "slime");
+            if (isSelfTransparent && isNeighborTransparent) b.mesh.material[i].visible = false;
+            else if (isNeighborTransparent) b.mesh.material[i].visible = true;
+            else b.mesh.material[i].visible = false;
+        }
+    });
+}
+function updateNeighbors(x, y, z) {
+    updateBlockFaces(x + 1, y, z); updateBlockFaces(x - 1, y, z);
+    updateBlockFaces(x, y + 1, z); updateBlockFaces(x, y - 1, z);
+    updateBlockFaces(x, y, z + 1); updateBlockFaces(x, y, z - 1);
+}
+
 function addBlock(x,y,z,type,send=true){
   const k=`${x},${y},${z}`; if(blocks.has(k)) return;
-  const mesh=new THREE.Mesh(boxGeo, mats[type]); 
+  const mesh=new THREE.Mesh(boxGeo, getBlockMaterials(type)); 
   mesh.position.set(x+0.5,y+0.5,z+0.5); scene.add(mesh); blocks.set(k,{mesh,type});
+  updateBlockFaces(x, y, z); updateNeighbors(x, y, z);
   if(send){ const d = {type:"addBlock",x,y,z,blockType:type}; if(isHostFlag) { sendToAll(d); saveWorld(); } else sendToHost(d); }
 }
 function removeBlock(x,y,z,send=true){
   const k=`${x},${y},${z}`; const b=blocks.get(k); if(!b) return;
   scene.remove(b.mesh); blocks.delete(k);
+  updateNeighbors(x, y, z);
   if(send){ const d = {type:"break",x,y,z}; if(isHostFlag) { sendToAll(d); saveWorld(); } else sendToHost(d); }
 }
 
@@ -327,16 +359,40 @@ function hitsCeiling(x, y, z) {
     for(let p of pts) if(blocks.has(`${Math.floor(p[0])},${iy},${Math.floor(p[1])}`)) return true;
     return false;
 }
-function takeDamage(amount, attackerPos = null, attackerId = null) {
+
+// 引数に死因(cause)を追加
+function takeDamage(amount, attackerPos = null, attackerId = null, cause = null) {
     if(isDead) return;
     myHealth -= amount; damagedFlag = true;
     if(attackerId) { lastAttackerId = attackerId; lastHitTime = performance.now(); }
     if(attackerPos) { const dir = new THREE.Vector3().subVectors(camera.position, attackerPos).normalize(); dir.y = 0; knockbackVel.copy(dir.multiplyScalar(10)); velocityY = 4; }
-    updateUI(); if(myHealth <= 0) processDeath();
+    updateUI(); if(myHealth <= 0) processDeath(cause);
 }
-function processDeath() {
+
+function processDeath(cause) {
     if(isDead) return; isDead = true; myHealth = 0; updateUI();
-    log(`${myName}は力尽きた`);
+    
+    // 死亡ログの高度な判定
+    const now = performance.now();
+    const hasAttacker = lastAttackerId && (now - lastHitTime < 5000);
+    const attackerName = hasAttacker ? (otherPlayers[lastAttackerId]?.name || "誰か") : null;
+    let deathMsg = "";
+
+    if (cause === 'void') {
+        deathMsg = hasAttacker ? `${myName}は${attackerName}に奈落に突き落とされた` : `${myName}は奈落の底へ落ちた`;
+    } else if (cause === 'fall') {
+        deathMsg = hasAttacker ? `${myName}は${attackerName}に突き落とされた` : `${myName}は地面と衝突した`;
+    } else if (hasAttacker) {
+        deathMsg = `${myName}は${attackerName}に倒された`;
+    } else {
+        deathMsg = `${myName}は力尽きた`;
+    }
+
+    log(deathMsg);
+    // ログを全プレイヤーに同期
+    const logData = { type: "log", msg: deathMsg };
+    if (isHostFlag) sendToAll(logData); else sendToHost(logData);
+
     setTimeout(() => { 
         myHealth = 10; velocityY = 0; isDead = false; knockbackVel.set(0,0,0);
         camera.position.set(0.5, 2.5, 0.5); playerY = 2.5 + PLAYER_H;
@@ -454,14 +510,14 @@ function animate(){
       if (hasGround(camera.position.x, nextY, camera.position.z)) {
           if (!onGround && !isDead) {
               const fallDist = highestYDuringFall - playerY; const groundPos = `${Math.floor(camera.position.x)},${Math.floor(nextY - PLAYER_H - 0.05)},${Math.floor(camera.position.z)}`;
-              const blockBelow = blocks.get(groundPos); if (fallDist > 3.5 && (!blockBelow || blockBelow.type !== "slime")) takeDamage(Math.floor(fallDist - 3));
+              const blockBelow = blocks.get(groundPos); if (fallDist > 3.5 && (!blockBelow || blockBelow.type !== "slime")) takeDamage(Math.floor(fallDist - 3), null, null, 'fall');
               highestYDuringFall = playerY;
           }
           playerY = Math.floor(nextY - PLAYER_H - 0.05) + 1 + PLAYER_H; velocityY = 0; onGround = true;
       } else { playerY = nextY; onGround = false; }
   }
   if (!isDead) { let safetyCount = 0; while (checkStuck(camera.position.x, playerY, camera.position.z) && safetyCount < 10) { playerY += 0.1; velocityY = 0; onGround = true; safetyCount++; } }
-  if(playerY < -30) processDeath();
+  if(playerY < -30) processDeath('void');
   const move = new THREE.Vector3(); const isMovingInput = (keys["KeyW"] || keys["KeyS"] || keys["KeyA"] || keys["KeyD"]) && locked;
   if(locked && !isDead){
     const fwd=new THREE.Vector3(-Math.sin(camera.rotation.y),0,-Math.cos(camera.rotation.y)), rt=new THREE.Vector3(Math.cos(camera.rotation.y),0,-Math.sin(camera.rotation.y));
@@ -563,7 +619,7 @@ function updateUI() {
         hot.innerHTML += `<div class="slot ${selectedSlot === i ? 'active' : ''}">${content}<div style="position:absolute;bottom:0;right:2px;font-size:10px;color:white;">${countText}</div></div>`;
     }
 }
-function flashPlayerRed(id) { const m = playerMeshes[id]; if(!m) return; m.group.traverse(c => { if(c.isMesh && c.material && c.material.emissive) c.material.emissive.set(0xff0000); }); setTimeout(() => { if(m && m.group) m.group.traverse(c => { if(c.isMesh && c.material && c.material.emissive) c.material.emissive.set(0x000000); }); }, 200); }
+function flashPlayerRed(id) { const m = playerMeshes[id]; if(!m) return; m.group.traverse(c => { if(c.isMesh && c.material) { if(Array.isArray(c.material)) c.material.forEach(mat=>mat.emissive?.set(0xff0000)); else c.material.emissive?.set(0xff0000); } }); setTimeout(() => { if(m && m.group) m.group.traverse(c => { if(c.isMesh && c.material) { if(Array.isArray(c.material)) c.material.forEach(mat=>mat.emissive?.set(0x000000)); else c.material.emissive?.set(0x000000); } }); }, 200); }
 </script>
 </body>
 </html>
