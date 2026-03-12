@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>マイクラ</title>
 <style>
-/* 7:36PM版のクリーンなスタイルをベースに統一 */
+/* スタイル設定 */
 body{margin:0;overflow:hidden;background:#87ceeb;font-family:sans-serif;}
 #crosshair{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);color:white;font-size:24px;pointer-events:none;z-index:10;display:none;}
 #msg{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#0008;color:white;padding:8px 16px;border-radius:6px;z-index:10;display:none;}
@@ -16,8 +16,8 @@ body{margin:0;overflow:hidden;background:#87ceeb;font-family:sans-serif;}
 #menuContent{background:rgba(20,20,20,0.95);padding:30px;border-radius:15px;text-align:center;border:2px solid #444;width:400px;display:flex;flex-direction:column;gap:15px;max-height: 90vh; overflow-y: auto;}
 #menuContent h1{margin-top:0;font-size:36px;color:#4caf50;text-shadow:2px 2px #000;}
 input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;color:white;text-align:center;outline:none;width:85%;margin:0 auto;}
-.large-btn{font-size:18px;padding:12px;cursor:pointer;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:bold;width:100%;}
-.large-btn:hover{background:#66bb6a;}
+.large-btn{font-size:18px;padding:12px;cursor:pointer;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:bold;width:100%; transition: 0.1s;}
+.large-btn:hover{background:#66bb6a; transform: scale(1.02);}
 .join-btn{background:#2196f3;}
 .join-btn:hover{background:#42a5f5;}
 .skin-select-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
@@ -26,14 +26,12 @@ input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;
 .settings-box { background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; display: flex; flex-direction: column; gap: 10px; align-items: center; }
 .checkbox-container { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .checkbox-container input { width: 18px; height: 18px; margin: 0; cursor: pointer; }
-
 .world-list { width: 100%; background: #111; border-radius: 5px; max-height: 200px; overflow-y: auto; border: 1px solid #333; }
 .world-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; text-align: left; }
 .world-info { flex-grow: 1; cursor: pointer; }
 .world-name { font-size: 14px; font-weight: bold; color: #eee; }
 .world-date { font-size: 10px; color: #777; }
 .delete-btn { background: #e53935; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
-
 #gameUI{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:flex-start;gap:4px;z-index:100;pointer-events:none;}
 #healthBar{display:flex;gap:1px;margin-left:2px;}
 .heart{width:18px;height:18px;color:#ff0000;font-size:22px;line-height:18px;text-shadow:2px 2px #000;display:inline-block;}
@@ -55,27 +53,19 @@ input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;
 <div id="netUI">
   <div id="menuContent">
     <h1>マイクラ</h1>
-    
-    <!-- プレイヤー設定 -->
     <input id="userNameInput" placeholder="名前を入力" maxlength="15">
     <span style="font-size:14px;color:#aaa;">服の色を選択</span>
     <div id="shirtSelect" class="skin-select-row"></div>
-    
-    <!-- メインメニュー -->
     <div id="mainUI" style="display:flex; flex-direction:column; gap:10px;">
         <button class="large-btn" onclick="showResumeUI()">ワールドを再開</button>
         <button class="large-btn" onclick="showCreateUI()">ワールドを新規作成</button>
         <button class="large-btn join-btn" onclick="showJoinUI()">参加する</button>
     </div>
-
-    <!-- ワールドを再開UI -->
     <div id="resumeUI" style="display:none; flex-direction:column; gap:10px;">
         <span style="font-size:14px;color:#4caf50;font-weight:bold;">保存されたワールドを選択</span>
         <div id="worldList" class="world-list"></div>
         <button onclick="backToMenu()" style="background:none;border:none;color:#aaa;cursor:pointer;margin-top:5px;">戻る</button>
     </div>
-
-    <!-- ワールドを新規作成UI -->
     <div id="createUI" style="display:none; flex-direction:column; gap:10px;">
         <span style="font-size:14px;color:#4caf50;font-weight:bold;">新規ワールド設定</span>
         <div class="settings-box">
@@ -89,8 +79,6 @@ input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;
         <button class="large-btn" onclick="startHost(null)">ワールドを作成して開始</button>
         <button onclick="backToMenu()" style="background:none;border:none;color:#aaa;cursor:pointer;margin-top:5px;">戻る</button>
     </div>
-
-    <!-- 参加するUI -->
     <div id="joinUI" style="display:none; flex-direction:column; gap:10px;">
         <span style="font-size:14px;color:#2196f3;font-weight:bold;">ホストのIDを入力</span>
         <input id="hostIdInput" placeholder="4桁のIDを入力" maxlength="4">
@@ -100,7 +88,7 @@ input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;
   </div>
 </div>
 
-<div id="hostInfo">サーバーID: <span id="myId">----</span> | <span id="curWorldName">---</span></div>
+<div id="hostInfo">サーバーID: <span id="myId">----</span> | <span id="curWorldLabel">ワールド: </span><span id="curWorldName">---</span></div>
 <div id="crosshair">+</div>
 <div id="msg">クリックして開始</div>
 <div id="progressBarContainer"><div id="progressBar"></div></div>
@@ -110,7 +98,7 @@ input{font-size:16px;padding:10px;border-radius:5px;border:none;background:#333;
 <script src="https://cdn.jsdelivr.net/npm/three@0.160/build/three.min.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-// ===== 定数と変数 =====
+// ===== 定数と設定 =====
 let CHUNK=3; 
 const RENDER=2, PLAYER_H=1.6, GRAVITY=-15, JUMP=6, MOVE_SPEED=5, CROUCH_SPEED=1.5, REACH=5;
 const blockHardness={ grass: 1.0, dirt: 1.0, stone: 3.0, slime: 0.5, bedrock: Infinity };
@@ -120,7 +108,7 @@ const COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00, 0x8e24aa, 0xfdd835, 0x00
 let selectedSlot = 0, shirtColor = 0x00acc1, myName = "Player";
 let isInfiniteMode = false, myHealth = 10, isDead = false, worldLoaded = false, isHostFlag = false;
 let currentWorldId = null; 
-let lastDamageTime = 0, knockbackVel = new THREE.Vector3(), swingTimer = 0, damagedFlag = false;
+let knockbackVel = new THREE.Vector3(), swingTimer = 0, damagedFlag = false;
 let highestYDuringFall = 0, lastAttackerId = null, lastHitTime = 0;
 let peer = null, myId = null, myPlayerMesh = null;
 
@@ -131,7 +119,47 @@ const inventory = [
     { type: null, count: 0 }, { type: null, count: 0 }, { type: null, count: 0 }
 ];
 
-// ===== 保存処理 =====
+// ===== テクスチャとマテリアル設定 (修正点) =====
+const loader = new THREE.TextureLoader();
+function loadTex(url) {
+    const t = loader.load(url);
+    t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestFilter;
+    t.colorSpace = THREE.SRGBColorSpace; // テクスチャの色空間を補正（暗くなるのを防ぐ）
+    return t;
+}
+
+const textures = {
+    grassTop: loadTex('https://static.wikia.nocookie.net/minecraft_gamepedia/images/b/be/Grass_Block_%28top_texture%29_JE4_BE2.png/revision/latest?cb=20230704210148'),
+    grassSide: loadTex('https://static.wikia.nocookie.net/minecraft_gamepedia/images/3/3b/Grass_Block_%28side_texture%29_JE2_BE2.png/revision/latest?cb=20200921204925'),
+    dirt: loadTex('https://static.wikia.nocookie.net/minecraft_gamepedia/images/3/3d/Dirt_%28texture%29_JE2_BE2.png/revision/latest?cb=20200919012354'),
+    stone: loadTex('https://static.wikia.nocookie.net/minecraft_gamepedia/images/d/dc/Stone_%28texture%29_JE5_BE3.png/revision/latest?cb=20201001141805'),
+    slime: loadTex('https://static.wikia.nocookie.net/minecraft_gamepedia/images/3/33/Slime_Block_%28texture%29_JE2_BE3.png/revision/latest?cb=20200922000943'),
+    bedrock: loadTex('https://static.wikia.nocookie.net/minecraft_gamepedia/images/0/08/Bedrock_%28texture%29_JE2_BE2.png/revision/latest?cb=20201001115713')
+};
+
+const mats = { 
+    dirt: new THREE.MeshLambertMaterial({ map: textures.dirt }), 
+    stone: new THREE.MeshLambertMaterial({ map: textures.stone }), 
+    slime: new THREE.MeshLambertMaterial({ map: textures.slime, transparent: true, opacity: 1.1 }),
+    bedrock: new THREE.MeshLambertMaterial({ map: textures.bedrock }), 
+    grass: [ // 右, 左, 上, 下, 前, 後
+        new THREE.MeshLambertMaterial({ map: textures.grassSide }),
+        new THREE.MeshLambertMaterial({ map: textures.grassSide }),
+        new THREE.MeshLambertMaterial({ map: textures.grassTop, color: 0xa2ff57  }),
+        new THREE.MeshLambertMaterial({ map: textures.dirt }), // 下面
+        new THREE.MeshLambertMaterial({ map: textures.grassSide }),
+        new THREE.MeshLambertMaterial({ map: textures.grassSide })
+    ],
+    skin: new THREE.MeshLambertMaterial({ color: FIXED_SKIN_TONE }), 
+    hair: new THREE.MeshLambertMaterial({ color: 0x4d3319 }), 
+    pants: new THREE.MeshLambertMaterial({ color: 0x3c44aa }), 
+    eye: new THREE.MeshBasicMaterial({ color: 0x000000 }),
+    wood: new THREE.MeshLambertMaterial({ color: 0x6d4c41 }),
+    iron: new THREE.MeshLambertMaterial({ color: 0xeeeeee })
+};
+
+// ===== 保存・UIロジック =====
 const SAVE_KEY = "mc_world_v2_";
 function saveWorld() {
     if (!isHostFlag || !currentWorldId) return;
@@ -155,31 +183,13 @@ function refreshWorldList() {
             list.appendChild(item); count++;
         }
     }
-    if(count === 0) list.innerHTML = "<div style='color:#666; font-size:12px; padding:15px; text-align:center;'>保存されたワールドはありません</div>";
+    if(count === 0) list.innerHTML = "<div style='color:#666; font-size:12px; padding:10px;'>データなし</div>";
 }
-function deleteWorld(id, e) { e.stopPropagation(); if(confirm("このワールドを削除しますか？")) { localStorage.removeItem(SAVE_KEY + id); refreshWorldList(); } }
-
-// ===== UI制御 =====
-function backToMenu() {
-    document.getElementById("mainUI").style.display = "flex";
-    document.getElementById("resumeUI").style.display = "none";
-    document.getElementById("createUI").style.display = "none";
-    document.getElementById("joinUI").style.display = "none";
-}
-function showResumeUI() {
-    document.getElementById("mainUI").style.display = "none";
-    document.getElementById("resumeUI").style.display = "flex";
-    refreshWorldList();
-}
-function showCreateUI() {
-    document.getElementById("mainUI").style.display = "none";
-    document.getElementById("createUI").style.display = "flex";
-}
-function showJoinUI() {
-    document.getElementById("mainUI").style.display = "none";
-    document.getElementById("joinUI").style.display = "flex";
-}
-
+function deleteWorld(id, e) { e.stopPropagation(); if(confirm("消去しますか？")) { localStorage.removeItem(SAVE_KEY + id); refreshWorldList(); } }
+function backToMenu() { ["mainUI", "resumeUI", "createUI", "joinUI"].forEach(id => document.getElementById(id).style.display = (id === "mainUI" ? "flex" : "none")); }
+function showResumeUI() { backToMenu(); document.getElementById("mainUI").style.display = "none"; document.getElementById("resumeUI").style.display = "flex"; refreshWorldList(); }
+function showCreateUI() { backToMenu(); document.getElementById("mainUI").style.display = "none"; document.getElementById("createUI").style.display = "flex"; }
+function showJoinUI() { backToMenu(); document.getElementById("mainUI").style.display = "none"; document.getElementById("joinUI").style.display = "flex"; }
 function initUI() {
     const shirtDiv = document.getElementById("shirtSelect"); shirtDiv.innerHTML = "";
     COLORS.forEach(c => {
@@ -191,29 +201,37 @@ function initUI() {
 }
 initUI();
 
-// ===== Three.js =====
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0x87ceeb);
-const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
-const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(window.innerWidth,window.innerHeight); renderer.shadowMap.enabled=true; document.body.appendChild(renderer.domElement);
-scene.add(new THREE.AmbientLight(0xffffff,0.7)); const sun=new THREE.DirectionalLight(0xffffff,0.8); sun.position.set(20,40,20); scene.add(sun);
+// ===== Three.js 初期設定 (明るさ補正) =====
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87ceeb);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({antialias:true}); 
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace; // 出力を鮮やかに
+document.body.appendChild(renderer.domElement);
 
-const mats = { 
-    grass: new THREE.MeshLambertMaterial({ color: 0x4caf50 }), 
-    dirt: new THREE.MeshLambertMaterial({ color: 0x8b5a2b }), 
-    stone: new THREE.MeshLambertMaterial({ color: 0x888888 }), 
-    slime: new THREE.MeshLambertMaterial({ color: 0x80ff00, transparent: true, opacity: 0.6 }),
-    bedrock: new THREE.MeshLambertMaterial({ color: 0x222222 }), 
-    wood: new THREE.MeshLambertMaterial({ color: 0x6d4c41 }), 
-    iron: new THREE.MeshLambertMaterial({ color: 0xeeeeee }), 
-    skin: new THREE.MeshLambertMaterial({ color: FIXED_SKIN_TONE }), 
-    hair: new THREE.MeshLambertMaterial({ color: 0x4d3319 }), 
-    pants: new THREE.MeshLambertMaterial({ color: 0x3c44aa }), 
-    eye: new THREE.MeshBasicMaterial({ color: 0x000000 }) 
-};
+// ライト（全体を明るくする）
+scene.add(new THREE.AmbientLight(0xffffff, 1.2)); 
+const sun = new THREE.DirectionalLight(0xffffff, 0.6); 
+sun.position.set(20, 40, 20); scene.add(sun);
+
 const selectionGroup = new THREE.Group(); selectionGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.001, 1.001, 1.001)), new THREE.LineBasicMaterial({ color: 0x000000 }))); scene.add(selectionGroup);
 const handGroup = new THREE.Group(); camera.add(handGroup);
 const handMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.4), mats.skin.clone());
 handMesh.position.set(0.45, -0.45, -0.6); handGroup.add(handMesh);
+scene.add(camera);
+
+const blocks=new Map(); const boxGeo=new THREE.BoxGeometry(1,1,1);
+function addBlock(x,y,z,type,send=true){
+  const k=`${x},${y},${z}`; if(blocks.has(k)) return;
+  const mesh=new THREE.Mesh(boxGeo, mats[type]); 
+  mesh.position.set(x+0.5,y+0.5,z+0.5); scene.add(mesh); blocks.set(k,{mesh,type});
+  if(send){ const d = {type:"addBlock",x,y,z,blockType:type}; if(isHostFlag) { sendToAll(d); saveWorld(); } else sendToHost(d); }
+}
+function removeBlock(x,y,z,send=true){
+  const k=`${x},${y},${z}`; const b=blocks.get(k); if(!b) return;
+  scene.remove(b.mesh); blocks.delete(k);
+  if(send){ const d = {type:"break",x,y,z}; if(isHostFlag) { sendToAll(d); saveWorld(); } else sendToHost(d); }
+}
 
 // ===== ネットワーク =====
 const connections={}; const otherPlayers={}; const playerMeshes={};
@@ -239,10 +257,9 @@ async function startHost(loadId){
         conn.on("open", () => {
             connections[conn.peer] = conn;
             const world=[]; for(const [k,v] of blocks){ const [x,y,z]=k.split(",").map(Number); world.push({x,y,z,type:v.type}); }
-            conn.send({type:"world", world, settings: {isInfiniteMode}, worldName: document.getElementById("curWorldName").innerText});
+            conn.send({type:"world", world, settings: {isInfiniteMode}});
         });
         conn.on("data", data => handleData(data, conn.peer));
-        conn.on("close", () => removeOtherPlayer(conn.peer));
     });
 }
 function joinHost(){
@@ -254,48 +271,45 @@ function joinHost(){
         myId = selfId; const conn = peer.connect(id, {reliable:true});
         conn.on("open", () => { connections[id] = conn; });
         conn.on("data", data => handleData(data, id));
-        conn.on("error", () => { alert("接続失敗"); location.reload(); });
     });
 }
 async function handleData(data, senderId) {
     if(data.id === myId) return;
     if(data.type === "world") {
         if(data.settings) isInfiniteMode = data.settings.isInfiniteMode;
-        document.getElementById("curWorldName").innerText = data.worldName || "参加中";
+        document.getElementById("curWorldLabel").innerText = ""; 
+        document.getElementById("curWorldName").innerText = "マルチプレイ";
         worldLoaded = true;
         for(const m of blocks.values()) scene.remove(m.mesh); blocks.clear();
         for(let i=0; i<data.world.length; i++) {
             const v = data.world[i]; addBlock(v.x, v.y, v.z, v.type, false);
-            if(i % 300 === 0) { document.getElementById("loadProgressText").innerText = Math.floor((i/data.world.length)*100) + "%"; await new Promise(r => setTimeout(r, 16)); }
+            if(i % 300 === 0) { document.getElementById("loadProgressText").innerText = Math.floor((i/data.world.length)*100) + "%"; await new Promise(r => setTimeout(r, 1)); }
         }
         document.getElementById("loadingUI").style.display = "none"; startGame();
     } else if(data.type === "player") {
         const pId = data.id || senderId;
         if(!playerMeshes[pId]) { createOtherPlayerModel(pId, data.name, data.shirtColor); log(data.name + " が参加しました"); }
-        otherPlayers[pId] = data;
+        otherPlayers[pId] = data; otherPlayers[pId].lastSeen = Date.now(); 
         if(data.damaged) flashPlayerRed(pId);
         if(isHostFlag) sendToAll(data, senderId);
     } else if(data.type === "addBlock") { addBlock(data.x, data.y, data.z, data.blockType, false); if(isHostFlag) { sendToAll(data, senderId); saveWorld(); }
     } else if(data.type === "break") { removeBlock(data.x, data.y, data.z, false); if(isHostFlag) { sendToAll(data, senderId); saveWorld(); }
     } else if(data.type === "attack") {
-        const attacker = data.attackerId || senderId;
-        if(data.target === myId) takeDamage(data.dmg, data.attackerPos, attacker);
+        if(data.target === myId) takeDamage(data.dmg, data.attackerPos, data.attackerId);
         if(isHostFlag) sendToAll(data, senderId);
-    } else if(data.type === "log") log(data.msg);
+    } else if(data.type === "log") { log(data.msg); if(isHostFlag) sendToAll(data, senderId); }
 }
 
-// ===== 物理・ゲームロジック =====
-const blocks=new Map(); const boxGeo=new THREE.BoxGeometry(1,1,1);
-function addBlock(x,y,z,type,send=true){
-  const k=`${x},${y},${z}`; if(blocks.has(k)) return;
-  const mesh=new THREE.Mesh(boxGeo, mats[type]); mesh.position.set(x+0.5,y+0.5,z+0.5); scene.add(mesh); blocks.set(k,{mesh,type});
-  if(send){ const d = {type:"addBlock",x,y,z,blockType:type}; if(isHostFlag) { sendToAll(d); saveWorld(); } else sendToHost(d); }
+function removeOtherPlayer(id) { 
+    if(playerMeshes[id]){ 
+        scene.remove(playerMeshes[id].group); 
+        log((otherPlayers[id]?.name || "Player") + " が退出しました");
+        delete playerMeshes[id]; delete otherPlayers[id]; 
+        if(connections[id]) { connections[id].close(); delete connections[id]; }
+    } 
 }
-function removeBlock(x,y,z,send=true){
-  const k=`${x},${y},${z}`; const b=blocks.get(k); if(!b) return;
-  scene.remove(b.mesh); blocks.delete(k);
-  if(send){ const d = {type:"break",x,y,z}; if(isHostFlag) { sendToAll(d); saveWorld(); } else sendToHost(d); }
-}
+
+// ===== 物理・ゲームコア =====
 function checkStuck(x, y, z) {
     const r = 0.3; const pts = [[x-r,z-r],[x+r,z-r],[x-r,z+r],[x+r,z+r]];
     for (let iy = Math.floor(y-PLAYER_H+0.1); iy <= Math.floor(y-0.1); iy++) for(let p of pts) if(blocks.has(`${Math.floor(p[0])},${iy},${Math.floor(p[1])}`)) return true;
@@ -322,13 +336,7 @@ function takeDamage(amount, attackerPos = null, attackerId = null) {
 }
 function processDeath() {
     if(isDead) return; isDead = true; myHealth = 0; updateUI();
-    const attackerName = (performance.now() - lastHitTime < 5000 && lastAttackerId && otherPlayers[lastAttackerId]) ? otherPlayers[lastAttackerId].name : null;
-    let msg; const fallDist = highestYDuringFall - playerY;
-    if(attackerName && fallDist > 3) msg = `${myName}は${attackerName}に突き落とされた`;
-    else if(attackerName) msg = `${myName}は${attackerName}に倒された`;
-    else msg = `${myName}は力尽きた`;
-    log(msg);
-    if(isHostFlag) sendToAll({type:"log", msg}); else sendToHost({type:"log", msg});
+    log(`${myName}は力尽きた`);
     setTimeout(() => { 
         myHealth = 10; velocityY = 0; isDead = false; knockbackVel.set(0,0,0);
         camera.position.set(0.5, 2.5, 0.5); playerY = 2.5 + PLAYER_H;
@@ -341,7 +349,6 @@ function startGame(loadedData) {
     document.getElementById("gameUI").style.display="flex"; document.getElementById("crosshair").style.display="block"; 
     updateUI(); updateHeldItem(); camera.position.set(0.5, 2.5, 0.5); playerY = 2.5 + PLAYER_H; 
     myPlayerMesh = createOtherPlayerModel(myId, myName, shirtColor); myPlayerMesh.group.visible = false; 
-    highestYDuringFall = playerY;
     if(isHostFlag) { 
         if(loadedData) {
             loadedData.blocks.forEach(b => { const [x, y, z] = b.k.split(",").map(Number); addBlock(x, y, z, b.type, false); });
@@ -350,8 +357,9 @@ function startGame(loadedData) {
             const limit = RENDER * CHUNK;
             for(let x=-limit; x<=limit; x++){
                 for(let z=-limit; z<=limit; z++){
-                    if(isInfiniteMode){ addBlock(x,-1,z,"grass",false); addBlock(x,-2,z,"dirt",false); addBlock(x,-3,z,"bedrock",false); }
-                    else { addBlock(x,-1,z,"grass",false); addBlock(x,-2,z,"dirt",false); addBlock(x,-3,z,"stone",false); addBlock(x,-4,z,"stone",false); addBlock(x,-5,z,"stone",false); addBlock(x,-6,z,"bedrock",false); }
+                    addBlock(x,-1,z,"grass",false); addBlock(x,-2,z,"dirt",false);
+                    if(!isInfiniteMode) { addBlock(x,-3,z,"stone",false); addBlock(x,-4,z,"stone",false); addBlock(x,-5,z,"stone",false); addBlock(x,-6,z,"bedrock",false); }
+                    else { addBlock(x,-3,z,"bedrock",false); }
                 }
             }
             saveWorld();
@@ -360,7 +368,6 @@ function startGame(loadedData) {
     worldLoaded = true;
 }
 
-// ===== 描画・モデル関連 =====
 function createItemMesh(type) {
     if(!type) return null;
     let model;
@@ -374,23 +381,28 @@ function createItemMesh(type) {
         const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), mats.wood.clone());
         const s2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.01), mats.iron.clone()); s2.position.y = 0.12;
         model.add(s1, s2);
-    } else if(mats[type]) model = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), mats[type].clone());
+    } else {
+        const m = mats[type];
+        model = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), Array.isArray(m) ? m : m.clone());
+    }
     return model;
 }
+
 function updateHeldItem() {
     handGroup.children.forEach(c => { if(c !== handMesh) handGroup.remove(c); });
     const item = inventory[selectedSlot];
-    if (item && item.type && (isInfiniteMode || item.count > 0 || item.count === Infinity)) {
+    if (item && item.type) {
         const model = createItemMesh(item.type);
         if(model) { model.position.set(0.45, -0.3, -0.7); model.rotation.set(0.5, 0, 0); handGroup.add(model); }
     }
 }
+
 function createOtherPlayerModel(peerId, name, shirt){
     const group = new THREE.Group(); group.userData.peerId = peerId;
     const bodyGroup = new THREE.Group(); bodyGroup.position.y = 0.75; group.add(bodyGroup);
-    const shirtMat = new THREE.MeshLambertMaterial({color: shirt}), skinMat = new THREE.MeshLambertMaterial({color: FIXED_SKIN_TONE});
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.75, 0.25), shirtMat.clone()); body.position.y = 0.375; bodyGroup.add(body);
-    const headJoint = new THREE.Group(); headJoint.add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skinMat.clone())); 
+    const shirtMat = new THREE.MeshLambertMaterial({color: shirt});
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.75, 0.25), shirtMat); body.position.y = 0.375; bodyGroup.add(body);
+    const headJoint = new THREE.Group(); headJoint.add(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), mats.skin.clone())); 
     const hair = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.15, 0.42), mats.hair.clone()); hair.position.y = 0.15; headJoint.add(hair);
     const eyeG = new THREE.BoxGeometry(0.08, 0.04, 0.01); const eL = new THREE.Mesh(eyeG, mats.eye.clone()); eL.position.set(-0.1, 0, -0.201); const eR = new THREE.Mesh(eyeG, mats.eye.clone()); eR.position.set(0.1, 0, -0.201); headJoint.add(eL, eR); headJoint.position.y = 0.95; bodyGroup.add(headJoint);
     const armL = new THREE.Group(); const aLM = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.75, 0.25), shirtMat.clone()); aLM.position.y = -0.375; armL.add(aLM); armL.position.set(-0.335, 0.75, 0); bodyGroup.add(armL);
@@ -412,7 +424,7 @@ function createNameLabel(text) {
     const texture = new THREE.CanvasTexture(canvas); const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
     sprite.scale.set(canvas.width / 200, 0.3, 1); return sprite;
 }
-function removeOtherPlayer(id) { if(playerMeshes[id]){ scene.remove(playerMeshes[id].group); const name = otherPlayers[id]?.name || "Player"; log(name + " が退出しました"); delete playerMeshes[id]; delete otherPlayers[id]; } }
+
 function updatePlayerAnimation(m, p, now) {
     if(!m) return; 
     if(p.isDead) { m.group.rotation.z = Math.PI / 2; m.group.position.y = (p.y - PLAYER_H) + 0.2; return; } else m.group.rotation.z = 0;
@@ -432,7 +444,7 @@ const keys={}; let mouseDown=false; let breaking=null;
 function animate(){
   requestAnimationFrame(animate);
   const now = performance.now(), delta = Math.min((now-prevTime)/1000, 0.1); prevTime=now;
-  if(!worldLoaded) { if(renderer) renderer.render(scene, camera); return; }
+  if(!worldLoaded) { renderer.render(scene, camera); return; }
   let isMining = false, isCrouching = keys["ShiftLeft"] && onGround;
   velocityY += GRAVITY * delta;
   let nextY = playerY + velocityY * delta;
@@ -461,9 +473,11 @@ function animate(){
   if (isCrouching && onGround) { if (!hasGround(camera.position.x + move.x, playerY, camera.position.z)) move.x = 0; if (!hasGround(camera.position.x, playerY, camera.position.z + move.z)) move.z = 0; }
   if(!checkStuck(camera.position.x + move.x, playerY, camera.position.z)) camera.position.x += move.x;
   if(!checkStuck(camera.position.x, playerY, camera.position.z + move.z)) camera.position.z += move.z;
+  
   if(!isDead) {
     if(swingTimer > 0) { swingTimer -= delta * 5; handGroup.rotation.x = -Math.sin(swingTimer * Math.PI) * 1.2; } else handGroup.rotation.x = 0;
-    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0),camera); const hits=ray.intersectObjects([...blocks.values()].map(b=>b.mesh));
+    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0),camera); 
+    const hits=ray.intersectObjects(Array.from(blocks.values()).map(b => b.mesh));
     if(hits.length>0 && hits[0].distance<=REACH){
       const hit=hits[0].object; selectionGroup.visible = true; selectionGroup.position.copy(hit.position);
       let tK = null, tD = null; for(const [k,v] of blocks){ if(v.mesh === hit){ tK = k; tD = v; break; } }
@@ -486,7 +500,6 @@ function animate(){
 }
 animate();
 
-// ===== イベント =====
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 function cancelBreaking() { breaking = null; document.getElementById("progressBarContainer").style.display = "none"; }
 function log(msg){ const l=document.getElementById("log"); const div = document.createElement("div"); div.className = "log-item"; div.innerText = msg; l.appendChild(div); setTimeout(() => { if(div.parentNode) div.remove(); }, 8000); }
@@ -511,9 +524,11 @@ document.addEventListener("mousedown", e => {
 });
 document.addEventListener("mouseup", e => { if(e.button === 0) mouseDown = false; });
 document.addEventListener("contextmenu", e => e.preventDefault());
+
 function placeBlock() {
     const item = inventory[selectedSlot]; if (!item || !item.type || (!isInfiniteMode && item.count <= 0)) return; 
-    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0),camera); const hits=ray.intersectObjects([...blocks.values()].map(b=>b.mesh));
+    const ray=new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0),camera); 
+    const hits=ray.intersectObjects(Array.from(blocks.values()).map(b => b.mesh));
     if(hits.length>0 && hits[0].distance<=REACH){
         const pos = hits[0].object.position.clone().add(hits[0].face.normal); const bx = Math.floor(pos.x), by = Math.floor(pos.y), bz = Math.floor(pos.z);
         const myFeetY = Math.floor(playerY - PLAYER_H), myHeadY = Math.floor(playerY - 0.2);
@@ -529,6 +544,7 @@ function sendPlayerState(digging, crouching){
 }
 function sendToAll(data, excludePeer=null){ for(let id in connections) if(id !== excludePeer) connections[id].send(data); }
 function sendToHost(data){ const c = Object.values(connections)[0]; if(c) c.send(data); }
+
 function updateUI() { 
     const hb = document.getElementById("healthBar"); hb.innerHTML = "";
     for(let i=0; i<10; i++) hb.innerHTML += `<span class="heart ${myHealth > i ? '' : 'empty'}">♥</span>`;
@@ -538,7 +554,10 @@ function updateUI() {
         if(s && s.type){
             if (s.type === "pickaxe") content = `<div style="font-size:20px;">⛏</div>`;
             else if (s.type === "shovel") content = `<div style="font-size:20px;">🥄</div>`;
-            else content = `<div style="width:16px;height:16px;background:${mats[s.type].color.getStyle()}"></div>`;
+            else {
+                const texUrl = s.type === "grass" ? textures.grassSide.image.src : (textures[s.type] ? textures[s.type].image.src : "");
+                content = `<div style="width:24px;height:24px;background-image:url(${texUrl});background-size:cover;image-rendering:pixelated;"></div>`;
+            }
         }
         const countText = (s && s.type) ? ((isInfiniteMode || s.count === Infinity) ? '∞' : s.count) : "";
         hot.innerHTML += `<div class="slot ${selectedSlot === i ? 'active' : ''}">${content}<div style="position:absolute;bottom:0;right:2px;font-size:10px;color:white;">${countText}</div></div>`;
